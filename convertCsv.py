@@ -51,14 +51,22 @@ def process_sale(row, rows, writer):
         # If Tax row found, subtract tax from the sale amount
         if tax_row:
             fees_taxes_value = float(tax_row[6].replace('-', '').replace('€', '').replace(',', '.'))
-            logging.info(f"Found sales tax for order #{order_info}: {fees_taxes_value} EUR")  # Log sales tax amount with EUR
             amount -= fees_taxes_value
-            logging.info(f"Calculated final sale value after subtracting sales tax: {amount} EUR") # Log calculated sale value with EUR
+            calculation_details = f"({amount_str} € - {fees_taxes_value} € (US-Sales Taxes payed by Etsy))"
+
         else:
-            logging.info(f"No sales tax found for order #{order_info}")  # Log if no sales tax found
+            calculation_details = f"({amount_str} €)"
 
 
-        output_row = [date.strftime("%d.%m.%Y"), "Verkauf", buyer, f"Bestellung #{order_info}", "{:,.2f}".format(amount).replace('.', ',')]
+        # Construct the output row with calculation details
+        output_row = [
+            date.strftime("%d.%m.%Y"),
+            "Verkauf",
+            buyer,
+            f"Bestellung #{order_info}",
+            calculation_details,  # Added calculation details
+            "{:,.2f}".format(amount).replace('.', ',')
+        ]
         writer.writerow(output_row)
         logging.info(f"Wrote row to CSV: {output_row}")  # Log the written row
     logging.info(f"Processed Sale: {row}")  # Log the processed row
