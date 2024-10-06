@@ -66,3 +66,119 @@ Das Skript kann an Ihre individuellen Bedürfnisse angepasst werden. Sie können
 ## Haftungsausschluss
 
 Dieses Programm wird ohne jegliche Gewährleistung bereitgestellt. Der Autor haftet nicht für Schäden, die durch die Verwendung dieses Programms entstehen.
+
+
+## Etsy CSV Converter: Detailed Documentation
+
+This document provides a detailed explanation of the Python script designed to convert an Etsy transaction CSV into a structured format suitable for accounting or analysis. 
+
+### 1. Overview
+
+The script takes an input CSV file containing Etsy transaction data (sales, deposits, fees) and transforms it into a more organized CSV output file. The output file presents the data in a chronologically sorted manner, summarizes fees by month and category, and uses a consistent format for dates and amounts. 
+
+### 2. Code Structure and Flow
+
+The script is structured into several functions to improve readability, maintainability, and testability. Here's a breakdown of the main components:
+
+**2.1. Main Function: `convert_csv(input_file, output_file)`**
+
+This function acts as the primary driver of the conversion process.
+
+```mermaid
+graph TD
+    A[Start: convert_csv()] --> B{Configure Logging}
+    B --> C{Calculate Input File Hash}
+    C --> D{Open Input & Unsorted Output Files}
+    D --> E{Read all rows from CSV}
+    E --> F{Iterate through each row}
+    F --> G{Check row type}
+    G -- Deposit --> H[Process Deposit]
+    G -- Sale --> I[Process Sale]
+    G -- Fee/Marketing --> J[Process Fee]
+    H --> K[Write to Unsorted Output]
+    I --> K
+    J --> K
+    F --> L{End of Row Iteration}
+    K --> L
+    L --> M{Write Summarized Data}
+    M --> N{Open Unsorted and Sorted Output Files}
+    N --> O{Sort Rows by Date}
+    O --> P{Write Sorted Data}
+    P --> Q{Calculate Output File Hash}
+    Q --> R[End]
+```
+
+**2.2. Processing Functions:**
+
+* **`process_deposit(row, writer)`:** Extracts relevant information (date, amount) from a "Deposit" row and writes it to the output CSV in the desired format.
+
+```mermaid
+graph LR
+    A[Deposit Row] --> B{Extract Date}
+    B --> C{Extract Amount} 
+    C --> D{Format Output Row}
+    D --> E{Write Row to CSV}
+```
+
+* **`process_sale(row, rows, writer)`:** Processes "Sale" entries, considering associated taxes and fees to calculate the net sale amount. It searches for corresponding "Tax" rows to accurately adjust the sale value.
+
+```mermaid
+graph LR
+    A[Sale Row] --> B{Extract Order Info, Buyer, Amount}
+    B --> C{Find Matching Tax Row}
+    C -- Found --> D{Calculate Net Sale Amount}
+    C -- Not Found --> E{Use Original Sale Amount}
+    D --> F{Format Output Row}
+    E --> F
+    F --> G{Write Row to CSV}
+```
+
+* **`process_fee(row, data, current_month, writer, next_listing_fee_is_renew)`:** Handles different types of fees (Listing, Transaction, etc.) by categorizing and summarizing them monthly. It accumulates fee data in the `data` dictionary for later output.
+
+```mermaid
+graph LR
+    A[Fee Row] --> B{Extract Date, Title, Amount}
+    B --> C{Determine Fee Type}
+    C --> D{Update Monthly Fee Summary}
+    D --> E{Handle Listing Fee Renewal Logic}
+    E --> F{Update next_listing_fee_is_renew}
+```
+
+**2.3. Helper Functions:**
+
+* **`calculate_file_hash(filepath)`:** Calculates the SHA-256 hash of a given file to ensure data integrity.
+* **`get_datetime_filename()`:** Generates a timestamped filename, useful for log files.
+* **`configure_logging(filename)`:** Sets up the logging system to write messages to a file for debugging and tracking.
+* **`update_fees(data, recipient, fee_type, fees_taxes)`:** Updates the accumulated fee data in the `data` dictionary.
+* **`write_summarized_data(data, last_day_of_month, writer)`:** Writes the summarized monthly fee data to the output CSV.
+
+### 3. Data Structures
+
+The script utilizes a few essential data structures:
+
+* **`data` (dictionary):**  Stores summarized fee information. The keys are fee recipients (e.g., "Etsy Ireland UC"), and the values are dictionaries containing fee types (e.g., "Listing Fees") and their corresponding accumulated amounts.
+* **`rows` (list):** Holds all rows read from the input CSV file, allowing for efficient searching for related entries (e.g., matching "Sale" rows with their "Tax" counterparts). 
+
+### 4. Example Usage
+
+To run the script, execute the following command, replacing `input.csv` and `output.csv` with your actual file names:
+
+```bash
+python etsy_converter.py input.csv output.csv 
+```
+
+This will read the data from `input.csv`, process it according to the defined functions, and create a new, formatted CSV file named `output.csv`.
+
+### 5. Error Handling and Logging
+
+The script incorporates error handling using `try-except` blocks to catch potential exceptions during data processing. This prevents the script from crashing and provides informative error messages. 
+
+The `logging` module is used extensively to log key events and potential issues during execution. This information is written to a timestamped log file, aiding in debugging and monitoring the script's behavior.
+
+### 6. Future Improvements
+
+* Implement command-line arguments for greater flexibility in specifying input/output files and other options.
+* Add support for different date and currency formats in the input CSV.
+* Create unit tests to ensure the reliability and correctness of the script's functions. 
+
+This documentation provides a comprehensive understanding of the Etsy CSV conversion script. By following the explanations and diagrams, you can easily grasp the code's functionality, data flow, and potential for future enhancements.
