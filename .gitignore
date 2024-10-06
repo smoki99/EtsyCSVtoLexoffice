@@ -1,0 +1,6 @@
+*.csv
+__pychace__
+**/__pychace__
+examples
+*.log
+*.pyc
