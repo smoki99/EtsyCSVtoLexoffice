@@ -2,6 +2,15 @@ import csv
 from datetime import datetime
 import pandas as pd
 import logging
+import hashlib
+
+# Function to calculate Hash SHA-256 for a file
+def calculate_file_hash(filepath):
+    sha256_hash = hashlib.sha256()
+    with open(filepath, "rb") as f:
+        for byte_block in iter(lambda: f.read(4096), b""):
+            sha256_hash.update(byte_block)
+    return sha256_hash.hexdigest()
 
 # Function to get the current datetime in the desired format
 def get_datetime_filename():
@@ -166,6 +175,10 @@ def convert_csv(input_file, output_file):
 
     configure_logging(log_filename)
 
+    # Log input file name and hash
+    logging.info(f"Input file: {input_file}")
+    logging.info(f"Input file hash: {calculate_file_hash(input_file)}")
+
     data = {}
     current_month = None
     next_listing_fee_is_renew = False 
@@ -203,7 +216,9 @@ def convert_csv(input_file, output_file):
         rows.sort(key=lambda row: datetime.strptime(row[0], '%d.%m.%Y'), reverse=True)
         writer.writerows(rows)
 
+    # Log output file name and hash
     logging.info(f"Conversion complete. Output saved to {output_file}")
+    logging.info(f"Output file hash: {calculate_file_hash(output_file)}")
 
 
 if __name__ == "__main__":
