@@ -52,7 +52,7 @@ def process_sale(row, rows, writer):
         if tax_row:
             fees_taxes_value = float(tax_row[6].replace('-', '').replace('€', '').replace(',', '.'))
             amount -= fees_taxes_value
-            calculation_details = f"({amount_str} € - {fees_taxes_value} € (US-Sales Taxes payed by Etsy))"
+            calculation_details = f"({amount_str} € - {fees_taxes_value:.2f} € (US-Sales Taxes payed by Etsy))"
 
         else:
             calculation_details = f"({amount_str} €)"
@@ -115,12 +115,12 @@ def update_fees(data, recipient, fee_type, fees_taxes):
             fees_taxes_value = float(fees_taxes.replace('-','').replace('€', '').replace(',','.'))
             previous_sum = data[recipient][fee_type]
             data[recipient][fee_type] += fees_taxes_value
-            logging.info(f"Added {fees_taxes_value} EUR to {fee_type} for {recipient} (before: {previous_sum} EUR + fee: {fees_taxes_value} EUR = sum: {data[recipient][fee_type]} EUR)")  # Log the added fee with sum
+            logging.info(f"Added {fees_taxes_value:.2f} EUR to {fee_type} for {recipient} (before: {previous_sum:.2f} EUR + fee: {fees_taxes_value:.2f} EUR = sum: {data[recipient][fee_type]:.2f} EUR)")  # Log the added fee with sum
         else:
             fees_taxes_value = float(fees_taxes.replace('€', '').replace(',','.'))
             previous_sum = data[recipient][fee_type]
             data[recipient][fee_type] -= fees_taxes_value
-            logging.info(f"Subtracted {fees_taxes_value} EUR from {fee_type} for {recipient} (before: {previous_sum} EUR - fee: {fees_taxes_value} EUR = sum: {data[recipient][fee_type]} EUR)")  # Log the subtracted fee with sum
+            logging.info(f"Subtracted {fees_taxes_value:.2f} EUR from {fee_type} for {recipient} (before: {previous_sum:.2f} EUR - fee: {fees_taxes_value:.2f} EUR = sum: {data[recipient][fee_type]:.2f} EUR)")  # Log the subtracted fee with sum
 
 
 def write_summarized_data(data, last_day_of_month, writer):
