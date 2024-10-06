@@ -1,6 +1,6 @@
 import unittest
 
-from tests.test_convertCsv import TestEtsyConverter  # Assuming correct relative import
+from tests.test_etsy_to_lexoffice import TestEtsyConverter  # Assuming correct relative import
 
 # Create a test suite
 suite = unittest.TestSuite()

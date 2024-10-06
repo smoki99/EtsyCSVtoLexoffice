@@ -8,7 +8,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from convertCsv import ( # Import after modifying sys.path
+from etsy_to_lexoffice import ( # Import after modifying sys.path
     process_deposit, process_sale, process_fee, update_fees, 
     write_summarized_data, convert_csv
 )
@@ -179,7 +179,7 @@ class TestEtsyConverter(unittest.TestCase):
         self.assertEqual(output_rows, expected_rows)
 
     @patch('logging.info')
-    @patch('convertCsv.get_datetime_filename') 
+    @patch('etsy_to_lexoffice.get_datetime_filename') 
     def test_convert_csv(self, mock_get_datetime_filename, mock_logging_info):
         mock_get_datetime_filename.return_value = '20240930_120000'
         input_csv_content = """Date,Type,Title,Info,Currency,Amount,"Fees & Taxes",Net,"Tax Details",Status,"Availability Date"
