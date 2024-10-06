@@ -1,7 +1,3 @@
-Du hast Recht, da habe ich mich vertan. In diesem Fall sind Deposits Auszahlungen *von* Etsy und somit Ausgaben, da sie den Etsy-Verkaufserlös reduzieren, der auf dein externes Konto fließt. 
-
-Ich werde die Dokumentation entsprechend anpassen:
-
 # EtsyCSVtoLexoffice: Etsy-CSV für Lexoffice konvertieren
 
 Dieses Python-Programm konvertiert eine CSV-Datei von Etsy in ein Format, das für den Import in Lexoffice geeignet ist. Es liest die Datei `input.csv` ein, verarbeitet die Daten und schreibt sie in die Datei `output.csv`. Zusätzlich wird eine Log-Datei erstellt, die den Konvertierungsprozess dokumentiert. 
@@ -42,7 +38,7 @@ Das Programm arbeitet in drei Schritten:
 Das Programm iteriert über jede Zeile der `input.csv` und führt je nach Typ der Zeile unterschiedliche Aktionen aus:
 
 * **Auszahlungen (Deposits):** Auszahlungen von Etsy werden erkannt und die relevanten Daten (Datum, Betrag) extrahiert. Das Datum wird von dem Format "Monat Tag, Jahr" in "Tag.Monat.Jahr" umgewandelt. Der Betrag wird als positiver Wert gespeichert, da es sich um eine Ausgabe handelt, die den Etsy-Verkaufserlös reduziert.
-* **Verkäufe (Sales):** Verkäufe werden erkannt und die Daten (Datum, Käufer, Bestellnummer, Betrag) extrahiert. Das Datum wird wie bei den Auszahlungen umgewandelt. Der Betrag wird um eventuelle Steuern bereinigt, die Etsy direkt einbehalten hat.
+* **Verkäufe (Sales):** Verkäufe werden erkannt und die Daten (Datum, Käufer, Bestellnummer, Betrag) extrahiert. Das Datum wird wie bei den Auszahlungen umgewandelt. Der Betrag wird um eventuelle Steuern (State-Tax) bereinigt, die Etsy direkt einbehalten hat.
 * **Gebühren (Fees) und Marketing:** Gebühren und Marketingausgaben werden erkannt und die Daten (Datum, Art der Gebühr, Betrag) extrahiert. Das Datum wird in das gewünschte Format umgewandelt. Der Betrag wird aufsummiert und nach Art der Gebühr gruppiert. 
 * **Monatliche Zusammenfassung:** Am Ende jedes Monats werden die aufgelaufenen Gebühren und Marketingausgaben in die `output.csv` geschrieben.
 
