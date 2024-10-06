@@ -92,9 +92,9 @@ graph TD
     D --> E{Read all rows from CSV}
     E --> F{Iterate through each row}
     F --> G{Check row type}
-    G -- Deposit --> H[Process Deposit]
-    G -- Sale --> I[Process Sale]
-    G -- Fee/Marketing --> J[Process Fee]
+    G -- "Deposit" --> H[Process Deposit]
+    G -- "Sale" --> I[Process Sale]
+    G -- "Fee/Marketing" --> J[Process Fee]
     H --> K[Write to Unsorted Output]
     I --> K
     J --> K
