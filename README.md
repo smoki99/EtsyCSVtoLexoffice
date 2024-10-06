@@ -175,10 +175,4 @@ The script incorporates error handling using `try-except` blocks to catch potent
 
 The `logging` module is used extensively to log key events and potential issues during execution. This information is written to a timestamped log file, aiding in debugging and monitoring the script's behavior.
 
-### 6. Future Improvements
-
-* Implement command-line arguments for greater flexibility in specifying input/output files and other options.
-* Add support for different date and currency formats in the input CSV.
-* Create unit tests to ensure the reliability and correctness of the script's functions. 
-
 This documentation provides a comprehensive understanding of the Etsy CSV conversion script. By following the explanations and diagrams, you can easily grasp the code's functionality, data flow, and potential for future enhancements.
