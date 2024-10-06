@@ -100,7 +100,7 @@ def convert_csv(input_file, output_file):
                     data = {} 
                 current_month = date.month
                 
-                if "Listing fee" in title and ignore_next_listing_fee:
+                if "Listing fee" in title and next_listing_fee_is_renew:
                     # Add the fee amount to the "Renew Sold Fees" summary entry
                     if "Renew Sold Fees" not in data["Etsy Ireland UC"]:
                         data["Etsy Ireland UC"]["Renew Sold Fees"] = 0
@@ -114,7 +114,7 @@ def convert_csv(input_file, output_file):
                             fees_taxes_value = float(fees_taxes.replace('€','').replace(',','.'))
                             data["Etsy Ireland UC"]["Renew Sold Fees"] -= fees_taxes_value
                             print(f"Updating Renew Sold Fees (negative): {data['Etsy Ireland UC']['Renew Sold Fees']}")
-                    ignore_next_listing_fee = False
+                    next_listing_fee_is_renew = False
                 elif "Listing fee" in title:
                     if "Listing Fees" not in data["Etsy Ireland UC"]:
                         data["Etsy Ireland UC"]["Listing Fees"] = 0
@@ -154,7 +154,7 @@ def convert_csv(input_file, output_file):
                             fees_taxes_value = float(fees_taxes.replace('€','').replace(',','.'))
                             data["Etsy Ireland UC"]["Processing Fees"] -= fees_taxes_value
                             print(f"Updating Processing Fees (negative): {data['Etsy Ireland UC']['Processing Fees']}")
-                        ignore_next_listing_fee = True # Ignore next Listing Fee
+                        next_listing_fee_is_renew = True # Next Listing Fee Is Renew
             elif type == "Marketing":
                 if "Etsy Ireland UC" not in data:
                     data["Etsy Ireland UC"] = {}
