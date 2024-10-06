@@ -161,10 +161,10 @@ The script utilizes a few essential data structures:
 
 ### 4. Example Usage
 
-To run the script, execute the following command, replacing `input.csv` and `output.csv` with your actual file names:
+To run the script:
 
 ```bash
-python etsy_converter.py input.csv output.csv 
+python etsy_to_lexoffice.py 
 ```
 
 This will read the data from `input.csv`, process it according to the defined functions, and create a new, formatted CSV file named `output.csv`.
