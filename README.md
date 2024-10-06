@@ -86,7 +86,7 @@ This function acts as the primary driver of the conversion process.
 
 ```mermaid
 graph TD
-    A[Start: convert_csv()] --> B{Configure Logging}
+    A[Start] --> B{Configure Logging}
     B --> C{Calculate Input File Hash}
     C --> D{Open Input & Unsorted Output Files}
     D --> E{Read all rows from CSV}
