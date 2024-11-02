@@ -224,4 +224,4 @@ def convert_csv(input_file, output_file):
 
 
 if __name__ == "__main__":
-    convert_csv('etsy_statement_2024_10.csv', 'etsy_statement_2024_10_processed.csv') 
+    convert_csv('input.csv', 'output.csv') 
