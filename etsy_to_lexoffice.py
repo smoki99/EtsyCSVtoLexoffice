@@ -118,6 +118,9 @@ def process_fee(row, data, current_month, writer, next_listing_fee_is_renew):
             next_listing_fee_is_renew = True
         elif "Etsy Ads" in title:
             update_fees(data, "Etsy Ireland UC", "Etsy Ads Fees", fees_taxes)
+        elif "Fee for sale made through Offsite Ads" in title:  # New fee type
+            update_fees(data, "Etsy Ireland UC", "Offsite Ads Fees", fees_taxes)
+
 
         return data, current_month, next_listing_fee_is_renew
     except Exception as e:
@@ -144,21 +147,21 @@ def write_summarized_data(data, last_day_of_month, writer):
     logging.info(f"Writing summarized data for {last_day_of_month}")
     for recipient, fees in data.items():
         for fee_type, amount in fees.items():
-            if fee_type == "Etsy Ads Fees":
+            if fee_type in ("Etsy Ads Fees", "Offsite Ads Fees"): # Include Offsite Ads Fees
                 output_row = [
-                    last_day_of_month.strftime("%d.%m.%Y"), 
-                    "Marketing", 
-                    recipient, 
-                    fee_type, 
+                    last_day_of_month.strftime("%d.%m.%Y"),
+                    "Marketing",
+                    recipient,
+                    fee_type,
                     f"{-amount:,.2f}".format(abs(amount)).replace('.', ',')
                 ]
             else:
                 output_row = [
-                    last_day_of_month.strftime("%d.%m.%Y"), 
-                    "Gebühr", 
-                    recipient, 
-                    fee_type, 
-                    f"{-amount:,.2f}".format(abs(amount)).replace('.', ',')
+                    last_day_of_month.strftime("%d.%m.%Y"),
+                    "Gebühr",
+                    recipient,
+                    fee_type,
+                     f"{-amount:,.2f}".format(abs(amount)).replace('.', ',')
                 ]
 
             if output_row:
