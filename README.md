@@ -19,7 +19,7 @@ Dieses Python-Programm konvertiert eine CSV-Datei von Etsy in ein Format, das f�
 3. **Skript herunterladen:** Laden Sie die Datei `etsy_to_lexoffice.py` herunter und speichern Sie sie im gleichen Verzeichnis wie die `input.csv`.
 4. **Skript ausführen:** Öffnen Sie Ihre Konsole, navigieren Sie zum Verzeichnis der Dateien und führen Sie das Python-Skript aus.  
     ```bash
-    python etsy_to_lexoffice.py 
+    ython etsy_to_lexoffice.py -infile ./input.csv -outfile ./output.csv
     ```
     Das Skript erstellt eine neue CSV-Datei namens `output.csv`, die für den Import in Lexoffice bereit ist. Außerdem wird eine Log-Datei erstellt, die detaillierte Informationen über den Konvertierungsprozess enthält.
 5. **CSV-Datei in Lexoffice importieren:** Importieren Sie die Datei `output.csv` in Lexoffice.

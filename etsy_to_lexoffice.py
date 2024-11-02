@@ -3,6 +3,7 @@ from datetime import datetime
 import pandas as pd
 import logging
 import hashlib
+import argparse  # For command-line arguments
 
 # Function to calculate Hash SHA-256 for a file
 def calculate_file_hash(filepath):
@@ -224,4 +225,9 @@ def convert_csv(input_file, output_file):
 
 
 if __name__ == "__main__":
-    convert_csv('input.csv', 'output.csv') 
+    parser = argparse.ArgumentParser(description='Convert Etsy CSV statement.')
+    parser.add_argument('-infile', '--input_file', required=True, help='Path to the input CSV file')
+    parser.add_argument('-outfile', '--output_file', required=True, help='Path to the output CSV file')
+    args = parser.parse_args()
+
+    convert_csv(args.input_file, args.output_file)
