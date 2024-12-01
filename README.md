@@ -14,12 +14,12 @@ Dieses Python-Programm konvertiert eine CSV-Datei von Etsy in ein Format, das f�
 
 ## Anleitung
 
-1. **CSV-Datei von Etsy herunterladen:** Laden Sie die gewünschte CSV-Datei aus Ihrem Etsy-Shop herunter. 
-2. **CSV-Datei umbenennen:** Benennen Sie die heruntergeladene CSV-Datei in `input.csv` um.
-3. **Skript herunterladen:** Laden Sie die Datei `etsy_to_lexoffice.py` herunter und speichern Sie sie im gleichen Verzeichnis wie die `input.csv`.
+1. **CSV-Datei Monthly Payments von Etsy herunterladen:** Laden Sie die gewünschte CSV-Datei aus Ihrem Etsy-Shop herunter, diese können Sie in `input.csv` umbenennen.
+2. **CSV-Datei Orders von Etsy herunterladen:** Lasen Sie aus Shop Manager > Einstellungen > Optionen die Orders für den Monat herunter und ändern Sie den Namen der CSV-Datei in `orders.csv` um.
+3. **Skript herunterladen:** Laden Sie die Datei `etsy_to_lexoffice.py` herunter und speichern Sie sie im gleichen Verzeichnis wie die `input.csv` und `orders.csv`
 4. **Skript ausführen:** Öffnen Sie Ihre Konsole, navigieren Sie zum Verzeichnis der Dateien und führen Sie das Python-Skript aus.  
     ```bash
-    ython etsy_to_lexoffice.py -infile ./input.csv -outfile ./output.csv
+    ython etsy_to_lexoffice.py -infile ./input.csv -outfile ./output.csv --ordersfile ./orders.csv
     ```
     Das Skript erstellt eine neue CSV-Datei namens `output.csv`, die für den Import in Lexoffice bereit ist. Außerdem wird eine Log-Datei erstellt, die detaillierte Informationen über den Konvertierungsprozess enthält.
 5. **CSV-Datei in Lexoffice importieren:** Importieren Sie die Datei `output.csv` in Lexoffice.
@@ -54,6 +54,7 @@ Nach der Ausführung des Programms finden Sie die folgenden Dateien in dem Verze
 
 * **`input.csv`:** Die von Ihnen bereitgestellte Etsy-CSV-Datei.
 * **`output.csv`:** Die für den Import in Lexoffice konvertierte CSV-Datei.
+* **`orders.csv`:** Die für den Import in Lexoffice konvertierte CSV-Datei.
 * **`etsy_to_lexoffice.py`:** Das Python-Skript.
 * **`convert_csv_[Datum]_[Zeit].log`:** Die Log-Datei mit detaillierten Informationen zum Konvertierungsprozess.
 

@@ -53,8 +53,19 @@ def process_deposit(row, writer):
         logging.error(f"Error processing deposit row: {row}. Error: {e}")
         raise
 
+def load_orders_file(orders_file):
+    """Load the orders CSV file and return a dictionary with Order ID as keys."""
+    orders_dict = {}
+    with open(orders_file, 'r', encoding='utf-8') as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            orders_dict[row["Order ID"]] = {
+                "Full Name": row["Full Name"],
+                "Address": f"{row['Street 1']} {row['Street 2']}, {row['Ship City']}, {row['Ship State']} {row['Ship Zipcode']}, {row['Ship Country']}"
+            }
+    return orders_dict
 
-def process_sale(row, rows, writer):
+def process_sale(row, rows, writer, orders_dict):
     try:
         logging.info(f"Processing sale: {row}")
         date = datetime.strptime(row[0].strip('"'), "%B %d, %Y").date()
@@ -73,9 +84,14 @@ def process_sale(row, rows, writer):
             if tax_row:
                 fees_taxes_value = float(tax_row[6].replace('-', '').replace('€', '').replace(',', '.'))
                 amount -= fees_taxes_value
-                calculation_details = f"({row[7].strip()} € - {fees_taxes_value:.2f} € (US-Sales Taxes payed by Etsy))"
+                calculation_details = f"({row[7].strip()} € - {fees_taxes_value:.2f} € (US-Sales Taxes paid by Etsy))"
             else:
                 calculation_details = f"({row[7].strip()} €)"
+
+            # Fetch address details from the orders dictionary
+            address = orders_dict.get(order_info, {}).get("Address", "Address not found")
+            calculation_details += f" | Address: {address}"
+            calculation_details = calculation_details.replace(',',';')
 
             output_row = [
                 date.strftime("%d.%m.%Y"),
@@ -170,7 +186,7 @@ def write_summarized_data(data, last_day_of_month, writer):
                 logging.info(f"Wrote row to CSV: {output_row}")
 
 
-def convert_csv(input_file, output_file):
+def convert_csv(input_file, output_file, orders_file=None):
     """Converts the input CSV to the output CSV with the specified transformations."""
     filename_prefix = "convert_csv"
     datetime_part = get_datetime_filename()
@@ -181,6 +197,11 @@ def convert_csv(input_file, output_file):
     # Log input file name and hash
     logging.info(f"Input file: {input_file}")
     logging.info(f"Input file hash: {calculate_file_hash(input_file)}")
+
+    orders_dict = {}
+    if orders_file:
+        logging.info(f"Loading orders file: {orders_file}")
+        orders_dict = load_orders_file(orders_file)
 
     data = {}
     current_month = None
@@ -200,7 +221,7 @@ def convert_csv(input_file, output_file):
             if type == "Deposit":
                 process_deposit(row, writer_unsorted)
             elif type == "Sale":
-                process_sale(row, rows, writer_unsorted)
+                process_sale(row, rows, writer_unsorted, orders_dict)
             elif type in ("Fee", "Marketing"):
                 data, current_month, next_listing_fee_is_renew = process_fee(row, data, current_month, 
                                                                           writer_unsorted, next_listing_fee_is_renew)
@@ -228,6 +249,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Convert Etsy CSV statement.')
     parser.add_argument('-infile', '--input_file', required=True, help='Path to the input CSV file')
     parser.add_argument('-outfile', '--output_file', required=True, help='Path to the output CSV file')
+    parser.add_argument('-ordersfile', '--orders_file', help='Path to the Etsy orders CSV file for address details')
     args = parser.parse_args()
 
-    convert_csv(args.input_file, args.output_file)
+    convert_csv(args.input_file, args.output_file, args.orders_file)
