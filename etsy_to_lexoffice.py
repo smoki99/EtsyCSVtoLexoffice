@@ -114,48 +114,67 @@ def process_refund(row, rows, writer, orders_dict):
         # Get buyer name if available, otherwise use a generic "Etsy Refund"
         buyer = orders_dict.get(order_info, {}).get("Full Name", "Etsy Refund")
 
+        # Initialize refund amount with the amount from the refund row
+        if row[6] == '--':
+            if row[7] != '--':
+                refund_amount = float(row[7].replace('€', '').replace(',', '.').strip())
+            else:
+                refund_amount = 0.0
+        else:
+            refund_amount = float(row[6].replace('€', '').replace(',', '.').strip())
+
+        # Find corresponding fee credit rows for this refund
+        fee_credit_rows = []
+        for r in rows:
+            if r[1] == "Fee" and "Credit for" in r[2] and f"Order #{order_info}" in r[3]:
+                fee_credit_rows.append(r)
+
+        # Adjust refund amount for fee credits (add back to refund amount)
+        total_fee_credit = 0
+        for fee_credit_row in fee_credit_rows:
+            fee_credit_amount = float(fee_credit_row[7].replace('€', '').replace(',', '.').strip())
+            total_fee_credit += fee_credit_amount
+            refund_amount += fee_credit_amount
+            logging.info(f"Adjusting refund amount by +{fee_credit_amount:.2f} EUR for fee credit")
+
         # Find the original sale row
         sale_row = None
         for r in rows:
             if r[1] == "Sale" and "for Order" in r[2] and order_info in r[2]:
                 sale_row = r
                 break
-
-        # Find the corresponding sales tax row for that order
-        tax_row = None
-        for r in rows:
-            if r[1] == "Tax" and r[3] == f"Order #{order_info}":
-                tax_row = r
-                break
-
-        # Get the sale amount (before tax deduction) and sales tax amount
-        if sale_row:
-            sale_amount = float(sale_row[7].replace('€', '').replace(',', '.').strip())
-            if tax_row:
-                sales_tax_amount = float(tax_row[6].replace('€', '').replace(',', '.').replace('-', '').strip())
-            else:
-                sales_tax_amount = 0.0
-
-            # Calculate the refund amount (sale amount - sales tax) and negate it
-            amount = -(sale_amount - sales_tax_amount)
-
-            # Create calculation details string
-            calculation_details = f"({sale_row[7].strip()} € - {sales_tax_amount:.2f} € (US-Sales Taxes paid by Etsy))"
-
-            logging.info(f"Setting refund amount to {amount:.2f} EUR (negating original sale amount minus sales tax)")
-
+        
         # Fetch address details from the orders dictionary
         address = orders_dict.get(order_info, {}).get("Address", "Address not found")
+
+        # Create calculation details string with partial refund information
+        if sale_row:
+            sale_amount_str = sale_row[7].strip()
+        else:
+            sale_amount_str = "N/A"
+
+        # Check if it's a partial refund or full refund
+        if "Partial" in row[2]:
+            refund_type = "Partial Refund"
+            calculation_details = f"({sale_amount_str} € (Original Sale) - {row[7].strip()} € (Refund) + {total_fee_credit:.2f} € (Fee Credit))"
+        else:
+            refund_type = "Full Refund"
+            calculation_details = f"({sale_amount_str} € (Original Sale))"
+
         calculation_details += f" | Address: {address}"
         calculation_details = calculation_details.replace(',', ';')
+
+        # Negate refund amount
+        refund_amount = - abs(refund_amount)
 
         output_row = [
             date.strftime("%d.%m.%Y"),
             "Rückerstattung",
             buyer,
-            f"Bestellung #{order_info} {calculation_details}",  # Include calculation details
-            f"{amount:,.2f}".replace('.', ',')  # Amount should be negative
+            f"{refund_type} Bestellung #{order_info} {calculation_details}",  # Include calculation details
+            f"{refund_amount:,.2f}".replace('.', ',')  # Amount should be negative
         ]
+
         writer.writerow(output_row)
         logging.info(f"Wrote refund row to CSV: {output_row}")
     except Exception as e:
