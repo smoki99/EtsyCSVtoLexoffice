@@ -3,7 +3,7 @@ from datetime import datetime
 import pandas as pd
 import logging
 import hashlib
-import argparse  # For command-line arguments
+import argparse
 
 # Function to calculate Hash SHA-256 for a file
 def calculate_file_hash(filepath):
@@ -18,7 +18,6 @@ def get_datetime_filename():
     now = datetime.now()
     return now.strftime("%Y%m%d_%H%M%S")
 
-
 def configure_logging(filename):
     """Configures logging to write to the specified file."""
     # Remove any existing handlers
@@ -32,7 +31,6 @@ def configure_logging(filename):
     # Add the new handler to the logger
     logging.getLogger().addHandler(file_handler)
     logging.getLogger().setLevel(logging.INFO)
-
 
 def process_deposit(row, writer):
     try:
@@ -102,10 +100,67 @@ def process_sale(row, rows, writer, orders_dict):
             ]
             writer.writerow(output_row)
             logging.info(f"Wrote row to CSV: {output_row}")
+        
     except Exception as e:
         logging.error(f"Error processing sale row: {row}. Error: {e}")
         raise
 
+def process_refund(row, rows, writer, orders_dict):
+    try:
+        logging.info(f"Processing refund: {row}")
+        date = datetime.strptime(row[0].strip('"'), "%B %d, %Y").date()
+        order_info = row[2].split("#")[1].strip()
+
+        # Get buyer name if available, otherwise use a generic "Etsy Refund"
+        buyer = orders_dict.get(order_info, {}).get("Full Name", "Etsy Refund")
+
+        # Find the original sale row
+        sale_row = None
+        for r in rows:
+            if r[1] == "Sale" and "for Order" in r[2] and order_info in r[2]:
+                sale_row = r
+                break
+
+        # Find the corresponding sales tax row for that order
+        tax_row = None
+        for r in rows:
+            if r[1] == "Tax" and r[3] == f"Order #{order_info}":
+                tax_row = r
+                break
+
+        # Get the sale amount (before tax deduction) and sales tax amount
+        if sale_row:
+            sale_amount = float(sale_row[7].replace('€', '').replace(',', '.').strip())
+            if tax_row:
+                sales_tax_amount = float(tax_row[6].replace('€', '').replace(',', '.').replace('-', '').strip())
+            else:
+                sales_tax_amount = 0.0
+
+            # Calculate the refund amount (sale amount - sales tax) and negate it
+            amount = -(sale_amount - sales_tax_amount)
+
+            # Create calculation details string
+            calculation_details = f"({sale_row[7].strip()} € - {sales_tax_amount:.2f} € (US-Sales Taxes paid by Etsy))"
+
+            logging.info(f"Setting refund amount to {amount:.2f} EUR (negating original sale amount minus sales tax)")
+
+        # Fetch address details from the orders dictionary
+        address = orders_dict.get(order_info, {}).get("Address", "Address not found")
+        calculation_details += f" | Address: {address}"
+        calculation_details = calculation_details.replace(',', ';')
+
+        output_row = [
+            date.strftime("%d.%m.%Y"),
+            "Rückerstattung",
+            buyer,
+            f"Bestellung #{order_info} {calculation_details}",  # Include calculation details
+            f"{amount:,.2f}".replace('.', ',')  # Amount should be negative
+        ]
+        writer.writerow(output_row)
+        logging.info(f"Wrote refund row to CSV: {output_row}")
+    except Exception as e:
+        logging.error(f"Error processing refund row: {row}. Error: {e}")
+        raise
 
 def process_fee(row, data, current_month, writer, next_listing_fee_is_renew):
     try:
@@ -122,6 +177,9 @@ def process_fee(row, data, current_month, writer, next_listing_fee_is_renew):
 
         title = row[2]
         fees_taxes = row[6]
+        # Credit from Etsy for fees from refunds have to handled like fees
+        if "Credit for" in title:
+            title = title.split("Credit for ")[1].strip()
 
         if "Listing fee" in title and next_listing_fee_is_renew:
             update_fees(data, "Etsy Ireland UC", "Renew Sold Fees", fees_taxes)
@@ -138,12 +196,10 @@ def process_fee(row, data, current_month, writer, next_listing_fee_is_renew):
         elif "Fee for sale made through Offsite Ads" in title:  # New fee type
             update_fees(data, "Etsy Ireland UC", "Offsite Ads Fees", fees_taxes)
 
-
         return data, current_month, next_listing_fee_is_renew
     except Exception as e:
         logging.error(f"Error processing fee row: {row}. Error: {e}")
         raise
-
 
 def update_fees(data, recipient, fee_type, fees_taxes):
     logging.info(f"Updating fees for {recipient}, {fee_type}, {fees_taxes}")
@@ -158,7 +214,6 @@ def update_fees(data, recipient, fee_type, fees_taxes):
         else:
             data[recipient][fee_type] -= fees_taxes_value
             logging.info(f"Subtracted {fees_taxes_value:.2f} EUR from {fee_type} for {recipient} (new sum: {data[recipient][fee_type]:.2f} EUR)")
-
 
 def write_summarized_data(data, last_day_of_month, writer):
     logging.info(f"Writing summarized data for {last_day_of_month}")
@@ -184,7 +239,6 @@ def write_summarized_data(data, last_day_of_month, writer):
             if output_row:
                 writer.writerow(output_row)
                 logging.info(f"Wrote row to CSV: {output_row}")
-
 
 def convert_csv(input_file, output_file, orders_file=None):
     """Converts the input CSV to the output CSV with the specified transformations."""
@@ -222,6 +276,8 @@ def convert_csv(input_file, output_file, orders_file=None):
                 process_deposit(row, writer_unsorted)
             elif type == "Sale":
                 process_sale(row, rows, writer_unsorted, orders_dict)
+            elif type == "Refund":  # Handle refunds directly
+                process_refund(row, rows, writer_unsorted, orders_dict)
             elif type in ("Fee", "Marketing"):
                 data, current_month, next_listing_fee_is_renew = process_fee(row, data, current_month, 
                                                                           writer_unsorted, next_listing_fee_is_renew)
@@ -243,7 +299,6 @@ def convert_csv(input_file, output_file, orders_file=None):
     # Log output file name and hash
     logging.info(f"Conversion complete. Output saved to {output_file}")
     logging.info(f"Output file hash: {calculate_file_hash(output_file)}")
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Convert Etsy CSV statement.')

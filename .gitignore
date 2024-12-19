@@ -4,3 +4,4 @@ __pychace__
 examples
 *.log
 *.pyc
+.env
