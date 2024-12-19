@@ -147,6 +147,7 @@ graph LR
 
 ```mermaid
 graph LR
+graph LR
     A[Refund Row] --> B{Extract Date, Order Info, Buyer}
     B --> C{Initialize Refund Amount from Row}
     C --> D{Find Corresponding Fee Credit Rows}
@@ -157,7 +158,7 @@ graph LR
     G --> E
     H --> E
     E --> I{Find Original Sale Row}
-    I --> J{Determine Refund Type (Partial/Full)}
+    I --> J{Determine Refund Type (Partial or Full)}
     J --> K{Create Calculation Details String}
     K --> L{Negate Refund Amount}
     L --> M{Format Output Row with Calculation Details}
