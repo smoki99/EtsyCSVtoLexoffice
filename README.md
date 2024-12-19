@@ -1,5 +1,3 @@
-Okay, I've updated the documentation to include detailed information about refunds, refund fees, and partial refunds. Here's the revised documentation:
-
 # EtsyCSVtoLexoffice: Etsy-CSV für Lexoffice konvertieren
 
 Dieses Python-Programm konvertiert eine CSV-Datei von Etsy in ein Format, das für den Import in Lexoffice geeignet ist. Es liest die Datei `input.csv` ein, verarbeitet die Daten und schreibt sie in die Datei `output.csv`. Zusätzlich wird eine Log-Datei erstellt, die den Konvertierungsprozess dokumentiert.
@@ -157,7 +155,7 @@ graph LR
     G --> E
     H --> E
     E --> I{Find Original Sale Row}
-    I --> J{Determine Refund Type (Partial or Full)}
+    I --> J{Determine Refund Type - Partial or Full}
     J --> K{Create Calculation Details String}
     K --> L{Negate Refund Amount}
     L --> M{Format Output Row with Calculation Details}
