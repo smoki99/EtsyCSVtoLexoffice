@@ -147,7 +147,6 @@ graph LR
 
 ```mermaid
 graph LR
-graph LR
     A[Refund Row] --> B{Extract Date, Order Info, Buyer}
     B --> C{Initialize Refund Amount from Row}
     C --> D{Find Corresponding Fee Credit Rows}
