@@ -134,8 +134,13 @@ def process_refund(row, rows, writer, orders_dict):
         for fee_credit_row in fee_credit_rows:
             fee_credit_amount = float(fee_credit_row[7].replace('€', '').replace(',', '.').strip())
             total_fee_credit += fee_credit_amount
-            refund_amount += fee_credit_amount
-            logging.info(f"Adjusting refund amount by +{fee_credit_amount:.2f} EUR for fee credit")
+
+            # Check for both "Credit for processing fee" and "Credit for transaction fee"
+            if "Credit for processing fee" in fee_credit_row[2] or "Credit for transaction fee" in fee_credit_row[2]:
+                refund_amount += fee_credit_amount  # Add back to refund amount
+                logging.info(f"Adjusting refund amount by +{fee_credit_amount:.2f} EUR for fee credit: {fee_credit_row[2]}")
+            else:
+                logging.warning(f"Fee credit type not handled: {fee_credit_row[2]}")
 
         # Find the original sale row
         sale_row = None
