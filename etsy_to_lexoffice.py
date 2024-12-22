@@ -219,7 +219,7 @@ def generate_xrechnung_lxml(invoice_number, order_info, amount, date,
     etree.SubElement(root, etree.QName(nsmap["cbc"], "DocumentCurrencyCode")).text = "EUR"
 
     # B2C keine Leitweg ID
-    etree.SubElement(root, etree.QName(nsmap["cbc"], "BuyerReference")).text = "n/a"
+    #etree.SubElement(root, etree.QName(nsmap["cbc"], "BuyerReference")).text = "n/a"
 
     # Add Billing Reference
     if is_cancellation and original_invoice_number:
