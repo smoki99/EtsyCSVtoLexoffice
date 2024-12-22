@@ -129,12 +129,6 @@ def generate_invoice_number(date, is_cancellation=False):
     return invoice_number
 
 def generate_xrechnung_lxml(invoice_number, order_info, buyer, amount, date, address_details, country_codes, is_cancellation=False, original_invoice_number=None):
-    global invoice_counter
-    # invoice_counter += 1  # Moved counter to generate_invoice_number
-    year = str(date.year)[-2:]
-    month = str(date.month).zfill(2)
-    # invoice_number = f"ETSY-{year}{month}-{invoice_counter:04}"  # Moved to function generate_invoice_number
-
     # Create Rechnungen folder if it doesn't exist
     invoice_folder = "Rechnungen"
     if not os.path.exists(invoice_folder):
@@ -427,8 +421,6 @@ def process_refund(row, rows, writer, orders_dict, country_codes):
             amount = -(sale_amount - sales_tax_amount)
             logging.info(f"Setting refund amount to {amount:.2f} EUR (negating original sale amount minus sales tax)")
 
-        address = orders_dict.get(order_info, {}).get("Address", "Address not found")
-
         if sale_row:
             sale_amount_str = sale_row[7].strip()
         else:
@@ -449,14 +441,13 @@ def process_refund(row, rows, writer, orders_dict, country_codes):
             refund_type = "Full Refund"
             calculation_details = f"({sale_amount_str} € (Original Sale) - {row[7].strip()} € (Refund) + {total_fee_credit:.2f} € (Fee Credit))"
 
-        calculation_details += f" | Address: {address}"
+        calculation_details += f" | Address: {address_details}"
         calculation_details = calculation_details.replace(',', ';')
 
         refund_amount = - abs(refund_amount)
 
         # Generate cancellation invoice number
         print(original_invoice_number)
-        print(address)
         print(address_details)
         print(sale_row)
         cancellation_invoice_number = generate_invoice_number(date, is_cancellation=True)
