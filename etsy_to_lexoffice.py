@@ -13,6 +13,9 @@ from lxml import etree
 # Load environment variables from .env file
 load_dotenv()
 
+# Global dictionary to store invoice_number to order_number mapping
+invoice_order_mapping = {}
+
 # Configuration for EU countries and VAT rates
 EU_COUNTRIES = {
     "AT": "Austria", "BE": "Belgium", "BG": "Bulgaria", "CY": "Cyprus", "CZ": "Czech Republic",
@@ -188,9 +191,9 @@ def generate_xrechnung_lxml(invoice_number, order_info, buyer, amount, date, add
     due_date = date + pd.DateOffset(days=14)
     etree.SubElement(root, etree.QName(NSMAP["cbc"], "DueDate")).text = due_date.strftime("%Y-%m-%d")
 
-    # Add invoice type code (380 = commercial invoice, 384 = corrected invoice)
+    # Add invoice type code (380 = commercial invoice, 381 = corrected invoice)
     if is_cancellation:
-        etree.SubElement(root, etree.QName(NSMAP["cbc"], "InvoiceTypeCode")).text = "384"
+        etree.SubElement(root, etree.QName(NSMAP["cbc"], "InvoiceTypeCode")).text = "381"
     else:
         etree.SubElement(root, etree.QName(NSMAP["cbc"], "InvoiceTypeCode")).text = "380"
 
@@ -349,6 +352,10 @@ def process_sale(row, rows, writer, orders_dict, country_codes):
             # Generate Invoice Number
             invoice_number = generate_invoice_number(date)
 
+            # Store invoice number to order number mapping
+            invoice_order_mapping[order_info] = invoice_number
+            logging.info(f"Invoice Number: {invoice_number}, Order Number: {order_info} added to mapping.")
+
             output_row = [
                 date.strftime("%d.%m.%Y"),
                 "Verkauf",
@@ -428,11 +435,8 @@ def process_refund(row, rows, writer, orders_dict, country_codes):
         
         # Extract original invoice number from sale row
         original_invoice_number = None
-        if sale_row:
-            sale_info = sale_row[3].split('-')
-            if len(sale_info) > 1:
-                original_invoice_number = sale_info[0].replace("Invoice ", "").strip()
-                logging.info(f"Extracted original invoice number: {original_invoice_number}")
+        original_invoice_number = invoice_order_mapping.get(order_info)
+        logging.info(f"Extracted original invoice number: {original_invoice_number}")
 
         if "Partial" in row[2]:
             refund_type = "Partial Refund"
@@ -450,7 +454,10 @@ def process_refund(row, rows, writer, orders_dict, country_codes):
         print(original_invoice_number)
         print(address_details)
         print(sale_row)
-        cancellation_invoice_number = generate_invoice_number(date, is_cancellation=True)
+        if (original_invoice_number == None):
+            cancellation_invoice_number = generate_invoice_number(date, is_cancellation=True)
+        else:
+            cancellation_invoice_number = original_invoice_number + "-STORNO"
 
         output_row = [
             date.strftime("%d.%m.%Y"),
@@ -464,7 +471,7 @@ def process_refund(row, rows, writer, orders_dict, country_codes):
         logging.info(f"Wrote refund row to CSV: {output_row}")
 
         # Generate XRechnung for cancellation invoice
-        generate_xrechnung_lxml(cancellation_invoice_number, order_info, buyer, refund_amount, date, address_details, country_codes, is_cancellation=True, original_invoice_number=original_invoice_number)
+        generate_xrechnung_lxml(cancellation_invoice_number, order_info, buyer, -refund_amount, date, address_details, country_codes, is_cancellation=True, original_invoice_number=original_invoice_number)
         logging.info(f"Generated XRechnung for cancellation invoice: {cancellation_invoice_number}")
 
     except Exception as e:
