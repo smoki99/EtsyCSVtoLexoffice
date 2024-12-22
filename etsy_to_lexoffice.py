@@ -201,7 +201,7 @@ def generate_xrechnung_lxml(invoice_number, order_info, buyer, amount, date, add
     etree.SubElement(root, etree.QName(NSMAP["cbc"], "DocumentCurrencyCode")).text = "EUR"
 
     # B2C keine Leitweg ID
-    etree.SubElement(root, etree.QName(NSMAP["cbc"], "BuyerReference")).text = "NOT_REQUIRED"
+    etree.SubElement(root, etree.QName(NSMAP["cbc"], "BuyerReference")).text = "n/a"
     
     # Add Billing Reference
     if is_cancellation and original_invoice_number:
@@ -238,7 +238,7 @@ def generate_xrechnung_lxml(invoice_number, order_info, buyer, amount, date, add
     # Add seller legal entity
     legal_entity = etree.SubElement(party, etree.QName(NSMAP["cac"], "PartyLegalEntity"))
     etree.SubElement(legal_entity, etree.QName(NSMAP["cbc"], "RegistrationName")).text = SENDER_COMPANY_NAME
-    #etree.SubElement(legal_entity, etree.QName(NSMAP["cbc"], "CompanyID"), attrib={"schemeID": "0198"}).text = SENDER_VAT_ID
+    #etree.SubElement(legal_entity, etree.QName(NSMAP["cbc"], "CompanyID"), attrib={"schemeID": "EU-VAT"}).text = SENDER_VAT_ID
     etree.SubElement(legal_entity, etree.QName(NSMAP["cbc"], "CompanyID"), attrib={"schemeID": "0201"}).text = SENDER_HRA
 
     # Add seller contact
@@ -270,6 +270,7 @@ def generate_xrechnung_lxml(invoice_number, order_info, buyer, amount, date, add
     etree.SubElement(legal_entity, etree.QName(NSMAP["cbc"], "RegistrationName")).text = "Name Anonymisiert" # buyer
     
     # Add payment means (42 = Payment into an account)
+    # Etsy pays to my Bank Account, thats why 42 is correct
     payment_means = etree.SubElement(root, etree.QName(NSMAP["cac"], "PaymentMeans"))
     etree.SubElement(payment_means, etree.QName(NSMAP["cbc"], "PaymentMeansCode")).text = "42"
 
