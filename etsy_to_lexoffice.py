@@ -256,7 +256,8 @@ def generate_xrechnung_lxml(invoice_number, order_info, amount, date,
     # Add seller legal entity
     legal_entity = etree.SubElement(party, etree.QName(nsmap["cac"], "PartyLegalEntity"))
     etree.SubElement(legal_entity, etree.QName(nsmap["cbc"], "RegistrationName")).text = SENDER_COMPANY_NAME
-    etree.SubElement(legal_entity, etree.QName(nsmap["cbc"], "CompanyID"), attrib={"schemeID": "0201"}).text = SENDER_HRA
+    # etree.SubElement(legal_entity, etree.QName(nsmap["cbc"], "CompanyID"), attrib={"schemeID": "0201"}).text = SENDER_HRA
+    etree.SubElement(legal_entity, etree.QName(nsmap["cbc"], "CompanyID")).text = SENDER_HRA
 
     # Add seller contact
     contact = etree.SubElement(party, etree.QName(nsmap["cac"], "Contact"))
