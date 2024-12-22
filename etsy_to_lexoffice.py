@@ -183,8 +183,8 @@ def generate_xrechnung_lxml(invoice_number, order_info, buyer, amount, date, add
     # Add document currency code
     etree.SubElement(root, etree.QName(NSMAP["cbc"], "DocumentCurrencyCode")).text = "EUR"
 
-    # Add buyer reference
-    etree.SubElement(root, etree.QName(NSMAP["cbc"], "BuyerReference")).text = buyer
+    # Not NEEDED: Add buyer reference (Leitweg ID)
+    # etree.SubElement(root, etree.QName(NSMAP["cbc"], "BuyerReference")).text = buyer
 
     # Add AccountingSupplierParty
     supplier_party = etree.SubElement(root, etree.QName(NSMAP["cac"], "AccountingSupplierParty"))
