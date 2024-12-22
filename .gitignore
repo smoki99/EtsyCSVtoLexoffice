@@ -1,4 +1,5 @@
 *.csv
+!country_codes.csv
 __pychace__
 **/__pychace__
 examples
