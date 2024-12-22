@@ -235,12 +235,11 @@ def generate_xrechnung_lxml(order_info, buyer, amount, date, address_details, co
     # No Buyer TAX ID Needed since B2C
     #etree.SubElement(legal_entity, etree.QName(NSMAP["cbc"], "CompanyID"), attrib={"schemeID": #"0198"}).text = "DE123456789"
 
-    # Add payment means (58 = SEPA credit transfer)
+    # Add payment means (42 = Payment into an account)
     payment_means = etree.SubElement(root, etree.QName(NSMAP["cac"], "PaymentMeans"))
-    etree.SubElement(payment_means, etree.QName(NSMAP["cbc"], "PaymentMeansCode"), attrib={"name": "SEPA credit transfer"}).text = "58"
-    # Add PayeeFinancialAccount with IBAN
-    payee_financial_account = etree.SubElement(payment_means, etree.QName(NSMAP["cac"], "PayeeFinancialAccount"))
-    etree.SubElement(payee_financial_account, etree.QName(NSMAP["cbc"], "ID")).text = "DE12345678901234567890" # Replace with IBAN
+    etree.SubElement(payment_means, etree.QName(NSMAP["cbc"], "PaymentMeansCode")).text = "42"
+    etree.SubElement(payment_means, etree.QName(NSMAP["cbc"], "InstructionNote")).text = "Payment processed by Etsy Payments"
+
 
     # Add tax total
     tax_total = etree.SubElement(root, etree.QName(NSMAP["cac"], "TaxTotal"))
@@ -299,7 +298,8 @@ def process_sale(row, rows, writer, orders_dict):
 
         if "for Order" in row[2]:
             order_info = row[2].split("#")[1].strip()
-            buyer = row[2].split("for Order")[0].strip()
+            #buyer = row[2].split("for Order")[0].strip()
+            buyer = orders_dict.get(order_info, {}).get("Full Name", "Etsy Refund")
             amount = float(row[7].replace('€', '').replace(',', '.').strip())
 
             tax_row = None
