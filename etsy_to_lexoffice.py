@@ -134,7 +134,7 @@ def generate_xrechnung_lxml(invoice_number, order_info, buyer, amount, date, add
     elif country_code not in EU_COUNTRIES:
         vat_rate = Decimal("0.00")
         vat_category = "G" # Export outside the EU
-        vat_note = "Steuerfreier Umsatz gemäß § 4 Nr. 1 Buchstabe a UStG in Verbindung mit § 6 UStG (Ausfuhrlieferung in ein Drittland)."
+        vat_note = "Steuerfreier Umsatz gemäß § 4 Nr. 1 Buchstabe a UStG in Verbindung mit § 6 UStG (Ausfuhrlieferung in ein Drittland). Hinweis: Die Sales Tax wurde bereits von Etsy gemäß den lokalen Steuergesetzen abgeführt. Der Käufer ist verantwortlich für etwaige Einfuhrzölle und Steuern, die bei der Lieferung anfallen können."
     else:
         vat_rate = Decimal("0.19")
         vat_category = "S" # Standard rate
