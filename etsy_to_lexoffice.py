@@ -5,6 +5,7 @@ import logging
 import hashlib
 import argparse
 import os
+import glob
 from dotenv import load_dotenv
 from decimal import Decimal
 from lxml import etree
@@ -78,21 +79,26 @@ def process_deposit(row, writer):
         logging.error(f"Error processing deposit row: {row}. Error: {e}")
         raise
 
-def load_orders_file(orders_file):
+def load_orders_file(orders_directory="."):
     """Load the orders CSV file and return a dictionary with Order ID as keys."""
     orders_dict = {}
-    with open(orders_file, 'r', encoding='utf-8') as file:
-        reader = csv.DictReader(file)
-        for row in reader:
-            orders_dict[row["Order ID"]] = {
-                "Full Name": row["Full Name"],
-                "Street 1": row["Street 1"],
-                "Street 2": row["Street 2"],
-                "Ship City": row["Ship City"],
-                "Ship State": row["Ship State"],
-                "Ship Zipcode": row["Ship Zipcode"],
-                "Ship Country": row["Ship Country"]
-            }
+    for filename in glob.glob(os.path.join(orders_directory, "EtsySoldOrders*.csv")):
+            try:
+                with open(filename, 'r', encoding='utf-8') as file:
+                    reader = csv.DictReader(file)
+                    for row in reader:
+                        orders_dict[row["Order ID"]] = {
+                            "Full Name": row["Full Name"],
+                            "Street 1": row["Street 1"],
+                            "Street 2": row["Street 2"],
+                            "Ship City": row["Ship City"],
+                            "Ship State": row["Ship State"],
+                            "Ship Zipcode": row["Ship Zipcode"],
+                            "Ship Country": row["Ship Country"]
+                        }
+                logging.info(f"Loaded orders from: {filename}")
+            except Exception as e:
+                logging.error(f"Error loading orders from {filename}: {e}")
     return orders_dict
 
 def load_country_codes(csv_filepath="country_codes.csv"):
@@ -511,7 +517,7 @@ def write_summarized_data(data, last_day_of_month, writer):
                 writer.writerow(output_row)
                 logging.info(f"Wrote row to CSV: {output_row}")
 
-def convert_csv(input_file, output_file, orders_file=None):
+def convert_csv(input_file, output_file):
     """Converts the input CSV to the output CSV with the specified transformations."""
     filename_prefix = "convert_csv"
     datetime_part = get_datetime_filename()
@@ -523,9 +529,9 @@ def convert_csv(input_file, output_file, orders_file=None):
     logging.info(f"Input file hash: {calculate_file_hash(input_file)}")
 
     orders_dict = {}
-    if orders_file:
-        logging.info(f"Loading orders file: {orders_file}")
-        orders_dict = load_orders_file(orders_file)
+    #if orders_file:
+    #logging.info(f"Loading orders file: {orders_file}")
+    orders_dict = load_orders_file()
 
     data = {}
     current_month = None
@@ -576,7 +582,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Convert Etsy CSV statement.')
     parser.add_argument('-infile', '--input_file', required=True, help='Path to the input CSV file')
     parser.add_argument('-outfile', '--output_file', required=True, help='Path to the output CSV file')
-    parser.add_argument('-ordersfile', '--orders_file', help='Path to the Etsy orders CSV file for address details')
+    # parser.add_argument('-ordersfile', '--orders_file', help='Path to the Etsy orders CSV file for address details')
     args = parser.parse_args()
 
-    convert_csv(args.input_file, args.output_file, args.orders_file)
+    convert_csv(args.input_file, args.output_file)
