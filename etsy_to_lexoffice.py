@@ -270,26 +270,26 @@ def generate_xrechnung_lxml(invoice_number, order_info, buyer, amount, date, add
 
     # Add legal monetary total
     legal_monetary_total = etree.SubElement(root, etree.QName(NSMAP["cac"], "LegalMonetaryTotal"))
-    etree.SubElement(legal_monetary_total, etree.QName(NSMAP["cbc"], "LineExtensionAmount"), attrib={"currencyID": "EUR"}).text = str(amount)
-    etree.SubElement(legal_monetary_total, etree.QName(NSMAP["cbc"], "TaxExclusiveAmount"), attrib={"currencyID": "EUR"}).text = str(amount)
-    etree.SubElement(legal_monetary_total, etree.QName(NSMAP["cbc"], "TaxInclusiveAmount"), attrib={"currencyID": "EUR"}).text = str(total_amount)
-    etree.SubElement(legal_monetary_total, etree.QName(NSMAP["cbc"], "PayableAmount"), attrib={"currencyID": "EUR"}).text = str(total_amount)
+    etree.SubElement(legal_monetary_total, etree.QName(NSMAP["cbc"], "LineExtensionAmount"), attrib={"currencyID": "EUR"}).text = "{:.2f}".format(amount)
+    etree.SubElement(legal_monetary_total, etree.QName(NSMAP["cbc"], "TaxExclusiveAmount"), attrib={"currencyID": "EUR"}).text = "{:.2f}".format(amount)
+    etree.SubElement(legal_monetary_total, etree.QName(NSMAP["cbc"], "TaxInclusiveAmount"), attrib={"currencyID": "EUR"}).text = "{:.2f}".format(total_amount)
+    etree.SubElement(legal_monetary_total, etree.QName(NSMAP["cbc"], "PayableAmount"), attrib={"currencyID": "EUR"}).text = "{:.2f}".format(total_amount)
 
     # Add invoice line
     invoice_line = etree.SubElement(root, etree.QName(NSMAP["cac"], "InvoiceLine"))
     etree.SubElement(invoice_line, etree.QName(NSMAP["cbc"], "ID")).text = "1"
     etree.SubElement(invoice_line, etree.QName(NSMAP["cbc"], "InvoicedQuantity"), attrib={"unitCode": "C62"}).text = "1"
-    etree.SubElement(invoice_line, etree.QName(NSMAP["cbc"], "LineExtensionAmount"), attrib={"currencyID": "EUR"}).text = str(amount)
+    etree.SubElement(invoice_line, etree.QName(NSMAP["cbc"], "LineExtensionAmount"), attrib={"currencyID": "EUR"}).text = "{:.2f}".format(amount)
     item = etree.SubElement(invoice_line, etree.QName(NSMAP["cac"], "Item"))
     etree.SubElement(item, etree.QName(NSMAP["cbc"], "Description")).text = f"Etsy Bestellung #{order_info}"
     etree.SubElement(item, etree.QName(NSMAP["cbc"], "Name")).text = "Bestellung"
     classified_tax_category = etree.SubElement(item, etree.QName(NSMAP["cac"], "ClassifiedTaxCategory"))
     etree.SubElement(classified_tax_category, etree.QName(NSMAP["cbc"], "ID")).text = vat_category
-    etree.SubElement(classified_tax_category, etree.QName(NSMAP["cbc"], "Percent")).text = str(vat_rate * 100)
+    etree.SubElement(classified_tax_category, etree.QName(NSMAP["cbc"], "Percent")).text = "{:.2f}".format(vat_rate * 100)
     tax_scheme = etree.SubElement(classified_tax_category, etree.QName(NSMAP["cac"], "TaxScheme"))
     etree.SubElement(tax_scheme, etree.QName(NSMAP["cbc"], "ID")).text = "VAT"
     price = etree.SubElement(invoice_line, etree.QName(NSMAP["cac"], "Price"))
-    etree.SubElement(price, etree.QName(NSMAP["cbc"], "PriceAmount"), attrib={"currencyID": "EUR"}).text = str(amount)
+    etree.SubElement(price, etree.QName(NSMAP["cbc"], "PriceAmount"), attrib={"currencyID": "EUR"}).text = "{:.2f}".format(amount)
 
     # Serialize to XML
     xml_string = etree.tostring(root, pretty_print=True, encoding="UTF-8", xml_declaration=True).decode("utf-8")
