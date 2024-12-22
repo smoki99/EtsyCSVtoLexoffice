@@ -127,14 +127,18 @@ def generate_xrechnung_lxml(invoice_number, order_info, buyer, amount, date, add
 
     # Determine VAT rate and note
     country_code = get_country_code(address_details.get("Ship Country", ""), country_codes)
-    if country_code not in EU_COUNTRIES:
+    if country_code == "DE":
+        vat_rate = Decimal("0.19")
+        vat_category = "S"  # Standard rate
+        vat_note = "Rechnungsbetrag enthält 19 % Umsatzsteuer gemäß § 1 Abs. 1 Nr. 1 UStG (Inlandsumsatz)."
+    elif country_code not in EU_COUNTRIES:
         vat_rate = Decimal("0.00")
         vat_category = "G" # Export outside the EU
-        vat_note = "Steuerfreie Ausfuhrlieferung"
+        vat_note = "Steuerfreier Umsatz gemäß § 4 Nr. 1 Buchstabe a UStG in Verbindung mit § 6 UStG (Ausfuhrlieferung in ein Drittland)."
     else:
         vat_rate = Decimal("0.19")
         vat_category = "S" # Standard rate
-        vat_note = "Innergemeinschaftliche Lieferung, Rechnungsstellung mit deutscher Umsatzsteuer aufgrund Kleinunternehmerregelung bis 10.000€ Umsatz."
+        vat_note = "Lieferung erfolgt mit deutscher Umsatzsteuer (19 %) gemäß § 3c Abs. 3 UStG, da der Gesamtumsatz für innergemeinschaftliche Fernverkäufe unterhalb der Lieferschwelle von 10.000 € liegt."
 
     # Calculate VAT amount and total amount
     vat_amount = (Decimal(str(amount)) * vat_rate).quantize(Decimal("0.01"))
