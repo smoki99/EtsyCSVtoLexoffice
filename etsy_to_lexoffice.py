@@ -527,14 +527,18 @@ def convert_csv(input_file, output_file, orders_file=None):
     current_month = None
     next_listing_fee_is_renew = False 
 
-    with open(input_file, 'r', encoding='utf-8') as infile, \
-            open('output-unsorted.csv', 'w', newline='', encoding='utf-8') as outfile_unsorted:
+    with open(input_file, 'r', encoding='utf-8-sig') as infile, \
+            open('output-unsorted.csv', 'w', newline='', encoding='utf-8') as outfile_unsorted: # Changed encoding to utf-8-sig
         reader = csv.reader(infile)
         writer_unsorted = csv.writer(outfile_unsorted, delimiter=',')
         writer_unsorted.writerow(['BUCHUNGSDATUM', 'ZUSATZINFO', 'AUFTRAGGEBER/EMPFÄNGER', 'VERWENDUNGSZWECK', 'BETRAG'])
 
-        rows = list(reader)
-        logging.info(f"Read {len(rows)} rows from input file.")
+        # Skip the header row
+        next(reader, None)  # Read and discard the header
+
+        # Sort rows by date, oldest first
+        rows = sorted(list(reader), key=lambda row: datetime.strptime(row[0].strip('"'), "%B %d, %Y"))
+        logging.info(f"Read and sorted {len(rows)} rows from input file.")
 
         for row in rows:
             type = row[1]
@@ -551,16 +555,7 @@ def convert_csv(input_file, output_file, orders_file=None):
         last_row_date = datetime.strptime(rows[-1][0].strip('"'), "%B %d, %Y").date()
         write_summarized_data(data, datetime(last_row_date.year, last_row_date.month, 1) + pd.offsets.MonthEnd(0), writer_unsorted)
 
-    with open('output-unsorted.csv', 'r', encoding='utf-8') as outfile_unsorted, \
-            open(output_file, 'w', newline='', encoding='utf-8') as outfile:
-        reader_unsorted = csv.reader(outfile_unsorted)
-        writer = csv.writer(outfile, delimiter=',')
-        header = next(reader_unsorted)
-        writer.writerow(header)
-
-        rows = list(reader_unsorted)
-        rows.sort(key=lambda row: datetime.strptime(row[0], '%d.%m.%Y'), reverse=True)
-        writer.writerows(rows)
+    # Removed unnecessary sorting
 
     logging.info(f"Conversion complete. Output saved to {output_file}")
     logging.info(f"Output file hash: {calculate_file_hash(output_file)}")
