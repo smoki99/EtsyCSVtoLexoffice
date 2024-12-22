@@ -1,0 +1,4 @@
+[messages control]
+extension-pkg-allow-list=lxml
+max-line-length = 200
+disable=logging-fstring-interpolation
