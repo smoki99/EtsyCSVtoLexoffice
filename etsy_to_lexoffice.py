@@ -275,8 +275,8 @@ def generate_xrechnung_lxml(invoice_number, order_info, buyer, amount, date, add
     etree.SubElement(invoice_line, etree.QName(NSMAP["cbc"], "InvoicedQuantity"), attrib={"unitCode": "C62"}).text = "1"
     etree.SubElement(invoice_line, etree.QName(NSMAP["cbc"], "LineExtensionAmount"), attrib={"currencyID": "EUR"}).text = str(amount)
     item = etree.SubElement(invoice_line, etree.QName(NSMAP["cac"], "Item"))
-    etree.SubElement(item, etree.QName(NSMAP["cbc"], "Description")).text = f"Etsy Order {order_info}"
-    etree.SubElement(item, etree.QName(NSMAP["cbc"], "Name")).text = "Order"
+    etree.SubElement(item, etree.QName(NSMAP["cbc"], "Description")).text = f"Etsy Bestellung #{order_info}"
+    etree.SubElement(item, etree.QName(NSMAP["cbc"], "Name")).text = "Bestellung"
     classified_tax_category = etree.SubElement(item, etree.QName(NSMAP["cac"], "ClassifiedTaxCategory"))
     etree.SubElement(classified_tax_category, etree.QName(NSMAP["cbc"], "ID")).text = vat_category
     etree.SubElement(classified_tax_category, etree.QName(NSMAP["cbc"], "Percent")).text = str(vat_rate * 100)
@@ -532,7 +532,7 @@ def convert_csv(input_file, output_file, orders_file=None):
     next_listing_fee_is_renew = False 
 
     with open(input_file, 'r', encoding='utf-8-sig') as infile, \
-            open('output-unsorted.csv', 'w', newline='', encoding='utf-8') as outfile_unsorted: # Changed encoding to utf-8-sig
+            open('output-unsorted.csv', 'w', newline='', encoding='utf-8') as outfile_unsorted:
         reader = csv.reader(infile)
         writer_unsorted = csv.writer(outfile_unsorted, delimiter=',')
         writer_unsorted.writerow(['BUCHUNGSDATUM', 'ZUSATZINFO', 'AUFTRAGGEBER/EMPFÄNGER', 'VERWENDUNGSZWECK', 'BETRAG'])
@@ -559,10 +559,18 @@ def convert_csv(input_file, output_file, orders_file=None):
         last_row_date = datetime.strptime(rows[-1][0].strip('"'), "%B %d, %Y").date()
         write_summarized_data(data, datetime(last_row_date.year, last_row_date.month, 1) + pd.offsets.MonthEnd(0), writer_unsorted)
 
-    # Removed unnecessary sorting
+    with open('output-unsorted.csv', 'r', encoding='utf-8') as outfile_unsorted, \
+            open(output_file, 'w', newline='', encoding='utf-8') as outfile:
+        reader_unsorted = csv.reader(outfile_unsorted)
+        writer = csv.writer(outfile, delimiter=',')
+        header = next(reader_unsorted)
+        writer.writerow(header)
 
+        for row in reader_unsorted:
+            writer.writerow(row)
+    
     logging.info(f"Conversion complete. Output saved to {output_file}")
-    logging.info(f"Output file hash: {calculate_file_hash(output_file)}")
+    logging.info(f"Output file hash: {calculate_file_hash(output_file)}") # Moved outside the with block
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Convert Etsy CSV statement.')
