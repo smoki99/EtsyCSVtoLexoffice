@@ -327,6 +327,9 @@ def process_sale(row, rows, writer, orders_dict, country_codes):
             order_info = row[2].split("#")[1].strip()
             buyer = orders_dict.get(order_info, {}).get("Full Name", "Etsy Refund")
             amount = float(row[7].replace('€', '').replace(',', '.').strip())
+            if buyer == "Etsy Refund":
+                logging.info(f"Full Cancelation Orders will not processed for {order_info}")
+                return
 
             tax_row = None
             for r in rows:
@@ -381,6 +384,9 @@ def process_refund(row, rows, writer, orders_dict, country_codes):
         address_details = orders_dict.get(order_info, {})
 
         buyer = orders_dict.get(order_info, {}).get("Full Name", "Etsy Refund")
+        if buyer == "Etsy Refund":
+            logging.info(f"Full Cancelation Orders will not processed for {order_info}")
+            return
 
         if row[6] == '--':
             if row[7] != '--':
@@ -451,9 +457,6 @@ def process_refund(row, rows, writer, orders_dict, country_codes):
         refund_amount = - abs(refund_amount)
 
         # Generate cancellation invoice number
-        print(original_invoice_number)
-        print(address_details)
-        print(sale_row)
         if (original_invoice_number == None):
             cancellation_invoice_number = generate_invoice_number(date, is_cancellation=True)
         else:
