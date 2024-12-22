@@ -149,6 +149,25 @@ def process_refund(row, rows, writer, orders_dict):
                 sale_row = r
                 break
         
+        # Find the corresponding sales tax row for that order
+        tax_row = None
+        for r in rows:
+            if r[1] == "Tax" and r[3] == f"Order #{order_info}":
+                tax_row = r
+                break
+        
+        # Get the sale amount (before tax deduction) and sales tax amount
+        if sale_row:
+            sale_amount = float(sale_row[7].replace('€', '').replace(',', '.').strip())
+            if tax_row:
+                sales_tax_amount = float(tax_row[6].replace('€', '').replace(',', '.').replace('-', '').strip())
+            else:
+                sales_tax_amount = 0.0
+
+            # Calculate the refund amount (sale amount - sales tax) and negate it
+            amount = -(sale_amount - sales_tax_amount)
+            logging.info(f"Setting refund amount to {amount:.2f} EUR (negating original sale amount minus sales tax)")
+
         # Fetch address details from the orders dictionary
         address = orders_dict.get(order_info, {}).get("Address", "Address not found")
 
@@ -164,7 +183,7 @@ def process_refund(row, rows, writer, orders_dict):
             calculation_details = f"({sale_amount_str} € (Original Sale) - {row[7].strip()} € (Refund) + {total_fee_credit:.2f} € (Fee Credit))"
         else:
             refund_type = "Full Refund"
-            calculation_details = f"({sale_amount_str} € (Original Sale))"
+            calculation_details = f"({sale_amount_str} € (Original Sale) - {row[7].strip()} € (Refund) + {total_fee_credit:.2f} € (Fee Credit))"
 
         calculation_details += f" | Address: {address}"
         calculation_details = calculation_details.replace(',', ';')
