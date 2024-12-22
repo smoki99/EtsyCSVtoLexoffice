@@ -111,13 +111,15 @@ def load_country_codes(csv_filepath="country_codes.csv"):
 def get_country_code(country_name, country_codes):
     return country_codes.get(country_name, "")  # Return empty string if not found
 
-def generate_xrechnung_lxml(order_info, buyer, amount, date, address_details, country_codes):
+def generate_invoice_number(date):
+    """Generates a unique invoice number based on the date."""
     global invoice_counter
     invoice_counter += 1
     year = str(date.year)[-2:]
     month = str(date.month).zfill(2)
-    invoice_number = f"ETSY-{year}{month}-{invoice_counter:04}"
+    return f"ETSY-{year}{month}-{invoice_counter:04}"
 
+def generate_xrechnung_lxml(invoice_number, order_info, buyer, amount, date, address_details, country_codes):
     # Create Rechnungen folder if it doesn't exist
     invoice_folder = "Rechnungen"
     if not os.path.exists(invoice_folder):
@@ -240,7 +242,6 @@ def generate_xrechnung_lxml(order_info, buyer, amount, date, address_details, co
     etree.SubElement(payment_means, etree.QName(NSMAP["cbc"], "PaymentMeansCode")).text = "42"
     etree.SubElement(payment_means, etree.QName(NSMAP["cbc"], "InstructionNote")).text = "Payment processed by Etsy Payments"
 
-
     # Add tax total
     tax_total = etree.SubElement(root, etree.QName(NSMAP["cac"], "TaxTotal"))
     etree.SubElement(tax_total, etree.QName(NSMAP["cbc"], "TaxAmount"), attrib={"currencyID": "EUR"}).text = str(vat_amount)
@@ -321,11 +322,14 @@ def process_sale(row, rows, writer, orders_dict):
             calculation_details += f" | Address: {address}"
             calculation_details = calculation_details.replace(',',';')
 
+            # Generate Invoice Number
+            invoice_number = generate_invoice_number(date)
+
             output_row = [
                 date.strftime("%d.%m.%Y"),
                 "Verkauf",
                 buyer,
-                f"Bestellung #{order_info} {calculation_details}",
+                f"Invoice {invoice_number} - Bestellung #{order_info} {calculation_details}",
                 f"{amount:,.2f}".replace('.', ',')
             ]
             writer.writerow(output_row)
@@ -333,7 +337,7 @@ def process_sale(row, rows, writer, orders_dict):
 
             # Generate XRechnung
             country_codes = load_country_codes()
-            generate_xrechnung_lxml(order_info, buyer, amount, date, address_details, country_codes)
+            generate_xrechnung_lxml(invoice_number, order_info, buyer, amount, date, address_details, country_codes)
         
     except Exception as e:
         logging.error(f"Error processing sale row: {row}. Error: {e}")
