@@ -117,38 +117,49 @@ def load_country_codes(csv_filepath="country_codes.csv"):
 def get_country_code(country_name, country_codes):
     return country_codes.get(country_name, "")  # Return empty string if not found
 
-def generate_invoice_number(date):
-    """Generates a unique invoice number based on the date."""
+def generate_invoice_number(date, is_cancellation=False):
+    """Generates a unique invoice number based on the date, with an optional -STORNO suffix."""
     global invoice_counter
     invoice_counter += 1
     year = str(date.year)[-2:]
     month = str(date.month).zfill(2)
-    return f"ETSY-{year}{month}-{invoice_counter:04}"
+    invoice_number = f"ETSY-{year}{month}-{invoice_counter:04}"
+    if is_cancellation:
+        invoice_number += "-STORNO"
+    return invoice_number
 
-def generate_xrechnung_lxml(invoice_number, order_info, buyer, amount, date, address_details, country_codes):
+def generate_xrechnung_lxml(invoice_number, order_info, buyer, amount, date, address_details, country_codes, is_cancellation=False, original_invoice_number=None):
+    global invoice_counter
+    # invoice_counter += 1  # Moved counter to generate_invoice_number
+    year = str(date.year)[-2:]
+    month = str(date.month).zfill(2)
+    # invoice_number = f"ETSY-{year}{month}-{invoice_counter:04}"  # Moved to function generate_invoice_number
+
     # Create Rechnungen folder if it doesn't exist
     invoice_folder = "Rechnungen"
     if not os.path.exists(invoice_folder):
         os.makedirs(invoice_folder)
 
-    # Determine VAT rate and note
+    # Determine VAT rate and note based on country code from mapping
     country_code = get_country_code(address_details.get("Ship Country", ""), country_codes)
-    if country_code == "DE":
-        vat_rate = Decimal("0.19")
-        vat_category = "S"  # Standard rate
-        vat_note = "Rechnungsbetrag enthält 19 % Umsatzsteuer gemäß § 1 Abs. 1 Nr. 1 UStG (Inlandsumsatz)."
-    elif country_code not in EU_COUNTRIES:
+    if country_code not in EU_COUNTRIES:
         vat_rate = Decimal("0.00")
-        vat_category = "G" # Export outside the EU
-        vat_note = "Steuerfreier Umsatz gemäß § 4 Nr. 1 Buchstabe a UStG in Verbindung mit § 6 UStG (Ausfuhrlieferung in ein Drittland). Hinweis: Die Sales Tax wurde bereits von Etsy gemäß den lokalen Steuergesetzen abgeführt. Der Käufer ist verantwortlich für etwaige Einfuhrzölle und Steuern, die bei der Lieferung anfallen können."
+        vat_category = "G"  # Export outside the EU
+        vat_note = "Steuerfreie Ausfuhrlieferung"
     else:
         vat_rate = Decimal("0.19")
-        vat_category = "S" # Standard rate
-        vat_note = "Lieferung erfolgt mit deutscher Umsatzsteuer (19 %) gemäß § 3c Abs. 3 UStG, da der Gesamtumsatz für innergemeinschaftliche Fernverkäufe unterhalb der Lieferschwelle von 10.000 € liegt."
+        vat_category = "S"  # Standard rate
+        vat_note = "Innergemeinschaftliche Lieferung, Rechnungsstellung mit deutscher Umsatzsteuer aufgrund Kleinunternehmerregelung bis 10.000€ Umsatz."
 
     # Calculate VAT amount and total amount
     vat_amount = (Decimal(str(amount)) * vat_rate).quantize(Decimal("0.01"))
     total_amount = Decimal(str(amount)) + vat_amount
+
+    # Negate amounts for cancellation invoices
+    if is_cancellation:
+        amount = -amount
+        vat_amount = -vat_amount
+        total_amount = -total_amount
 
     # Define namespaces
     NSMAP = {
@@ -183,14 +194,23 @@ def generate_xrechnung_lxml(invoice_number, order_info, buyer, amount, date, add
     due_date = date + pd.DateOffset(days=14)
     etree.SubElement(root, etree.QName(NSMAP["cbc"], "DueDate")).text = due_date.strftime("%Y-%m-%d")
 
-    # Add invoice type code (380 = commercial invoice)
-    etree.SubElement(root, etree.QName(NSMAP["cbc"], "InvoiceTypeCode")).text = "380"
+    # Add invoice type code (380 = commercial invoice, 384 = corrected invoice)
+    if is_cancellation:
+        etree.SubElement(root, etree.QName(NSMAP["cbc"], "InvoiceTypeCode")).text = "384"
+    else:
+        etree.SubElement(root, etree.QName(NSMAP["cbc"], "InvoiceTypeCode")).text = "380"
 
     # Add document currency code
     etree.SubElement(root, etree.QName(NSMAP["cbc"], "DocumentCurrencyCode")).text = "EUR"
 
-    # Not NEEDED: Add buyer reference (Leitweg ID)
+    # Add buyer reference Keine Leitweg ID
     # etree.SubElement(root, etree.QName(NSMAP["cbc"], "BuyerReference")).text = buyer
+    
+    # Add Billing Reference
+    if is_cancellation and original_invoice_number:
+        billing_reference = etree.SubElement(root, etree.QName(NSMAP["cac"], "BillingReference"))
+        invoice_document_reference = etree.SubElement(billing_reference, etree.QName(NSMAP["cac"], "InvoiceDocumentReference"))
+        etree.SubElement(invoice_document_reference, etree.QName(NSMAP["cbc"], "ID")).text = original_invoice_number
 
     # Add AccountingSupplierParty
     supplier_party = etree.SubElement(root, etree.QName(NSMAP["cac"], "AccountingSupplierParty"))
@@ -237,7 +257,6 @@ def generate_xrechnung_lxml(invoice_number, order_info, buyer, amount, date, add
     etree.SubElement(postal_address, etree.QName(NSMAP["cbc"], "CityName")).text = address_details.get("Ship City", "")
     etree.SubElement(postal_address, etree.QName(NSMAP["cbc"], "PostalZone")).text = address_details.get("Ship Zipcode", "")
     country = etree.SubElement(postal_address, etree.QName(NSMAP["cac"], "Country"))
-
     etree.SubElement(country, etree.QName(NSMAP["cbc"], "IdentificationCode")).text = get_country_code(address_details.get("Ship Country", ""), country_codes)
     
     # Add buyer legal entity
@@ -254,14 +273,14 @@ def generate_xrechnung_lxml(invoice_number, order_info, buyer, amount, date, add
 
     # Add tax total
     tax_total = etree.SubElement(root, etree.QName(NSMAP["cac"], "TaxTotal"))
-    etree.SubElement(tax_total, etree.QName(NSMAP["cbc"], "TaxAmount"), attrib={"currencyID": "EUR"}).text = str(vat_amount)
+    etree.SubElement(tax_total, etree.QName(NSMAP["cbc"], "TaxAmount"), attrib={"currencyID": "EUR"}).text = "{:.2f}".format(vat_amount)
 
     tax_subtotal = etree.SubElement(tax_total, etree.QName(NSMAP["cac"], "TaxSubtotal"))
-    etree.SubElement(tax_subtotal, etree.QName(NSMAP["cbc"], "TaxableAmount"), attrib={"currencyID": "EUR"}).text = str(amount)
-    etree.SubElement(tax_subtotal, etree.QName(NSMAP["cbc"], "TaxAmount"), attrib={"currencyID": "EUR"}).text = str(vat_amount)
+    etree.SubElement(tax_subtotal, etree.QName(NSMAP["cbc"], "TaxableAmount"), attrib={"currencyID": "EUR"}).text = "{:.2f}".format(amount)
+    etree.SubElement(tax_subtotal, etree.QName(NSMAP["cbc"], "TaxAmount"), attrib={"currencyID": "EUR"}).text = "{:.2f}".format(vat_amount)
     tax_category = etree.SubElement(tax_subtotal, etree.QName(NSMAP["cac"], "TaxCategory"))
     etree.SubElement(tax_category, etree.QName(NSMAP["cbc"], "ID")).text = vat_category
-    etree.SubElement(tax_category, etree.QName(NSMAP["cbc"], "Percent")).text = str(vat_rate * 100)
+    etree.SubElement(tax_category, etree.QName(NSMAP["cbc"], "Percent")).text = "{:.2f}".format(vat_rate * 100)
     # Add exemption reason if the rate is 0
     if vat_rate == 0:
       etree.SubElement(tax_category, etree.QName(NSMAP["cbc"], "TaxExemptionReason")).text = vat_note
@@ -278,7 +297,7 @@ def generate_xrechnung_lxml(invoice_number, order_info, buyer, amount, date, add
     # Add invoice line
     invoice_line = etree.SubElement(root, etree.QName(NSMAP["cac"], "InvoiceLine"))
     etree.SubElement(invoice_line, etree.QName(NSMAP["cbc"], "ID")).text = "1"
-    etree.SubElement(invoice_line, etree.QName(NSMAP["cbc"], "InvoicedQuantity"), attrib={"unitCode": "C62"}).text = "1"
+    etree.SubElement(invoice_line, etree.QName(NSMAP["cbc"], "InvoicedQuantity"), attrib={"unitCode": "C62"}).text = "1" if not is_cancellation else "-1"
     etree.SubElement(invoice_line, etree.QName(NSMAP["cbc"], "LineExtensionAmount"), attrib={"currencyID": "EUR"}).text = "{:.2f}".format(amount)
     item = etree.SubElement(invoice_line, etree.QName(NSMAP["cac"], "Item"))
     etree.SubElement(item, etree.QName(NSMAP["cbc"], "Description")).text = f"Etsy Bestellung #{order_info}"
@@ -289,7 +308,7 @@ def generate_xrechnung_lxml(invoice_number, order_info, buyer, amount, date, add
     tax_scheme = etree.SubElement(classified_tax_category, etree.QName(NSMAP["cac"], "TaxScheme"))
     etree.SubElement(tax_scheme, etree.QName(NSMAP["cbc"], "ID")).text = "VAT"
     price = etree.SubElement(invoice_line, etree.QName(NSMAP["cac"], "Price"))
-    etree.SubElement(price, etree.QName(NSMAP["cbc"], "PriceAmount"), attrib={"currencyID": "EUR"}).text = "{:.2f}".format(amount)
+    etree.SubElement(price, etree.QName(NSMAP["cbc"], "PriceAmount"), attrib={"currencyID": "EUR"}).text = "{:.2f}".format(abs(amount))
 
     # Serialize to XML
     xml_string = etree.tostring(root, pretty_print=True, encoding="UTF-8", xml_declaration=True).decode("utf-8")
@@ -302,14 +321,13 @@ def generate_xrechnung_lxml(invoice_number, order_info, buyer, amount, date, add
 
     logging.info(f"Generated XRechnung: {invoice_filename}")
 
-def process_sale(row, rows, writer, orders_dict):
+def process_sale(row, rows, writer, orders_dict, country_codes):
     try:
         logging.info(f"Processing sale: {row}")
         date = datetime.strptime(row[0].strip('"'), "%B %d, %Y").date()
 
         if "for Order" in row[2]:
             order_info = row[2].split("#")[1].strip()
-            #buyer = row[2].split("for Order")[0].strip()
             buyer = orders_dict.get(order_info, {}).get("Full Name", "Etsy Refund")
             amount = float(row[7].replace('€', '').replace(',', '.').strip())
 
@@ -328,9 +346,11 @@ def process_sale(row, rows, writer, orders_dict):
 
             # Fetch address details from the orders dictionary
             address_details = orders_dict.get(order_info, {})
-            address = f"{address_details.get('Street 1', '')} {address_details.get('Street 2', '')}, {address_details.get('Ship City', '')}, {address_details.get('Ship State', '')} {address_details.get('Ship Zipcode', '')}, {address_details.get('Ship Country', '')}"
+            address = (f"{address_details.get('Street 1', '')} {address_details.get('Street 2', '')}, "
+                       f"{address_details.get('Ship City', '')}, {address_details.get('Ship State', '')} "
+                       f"{address_details.get('Ship Zipcode', '')}, {address_details.get('Ship Country', '')}")
             calculation_details += f" | Address: {address}"
-            calculation_details = calculation_details.replace(',',';')
+            calculation_details = calculation_details.replace(',', ';')
 
             # Generate Invoice Number
             invoice_number = generate_invoice_number(date)
@@ -346,18 +366,18 @@ def process_sale(row, rows, writer, orders_dict):
             logging.info(f"Wrote row to CSV: {output_row}")
 
             # Generate XRechnung
-            country_codes = load_country_codes()
             generate_xrechnung_lxml(invoice_number, order_info, buyer, amount, date, address_details, country_codes)
-        
+
     except Exception as e:
         logging.error(f"Error processing sale row: {row}. Error: {e}")
         raise
 
-def process_refund(row, rows, writer, orders_dict):
+def process_refund(row, rows, writer, orders_dict, country_codes):
     try:
         logging.info(f"Processing refund: {row}")
         date = datetime.strptime(row[0].strip('"'), "%B %d, %Y").date()
         order_info = row[2].split("#")[1].strip()
+        address_details = orders_dict.get(order_info, {})
 
         buyer = orders_dict.get(order_info, {}).get("Full Name", "Etsy Refund")
 
@@ -413,6 +433,14 @@ def process_refund(row, rows, writer, orders_dict):
             sale_amount_str = sale_row[7].strip()
         else:
             sale_amount_str = "N/A"
+        
+        # Extract original invoice number from sale row
+        original_invoice_number = None
+        if sale_row:
+            sale_info = sale_row[3].split('-')
+            if len(sale_info) > 1:
+                original_invoice_number = sale_info[0].replace("Invoice ", "").strip()
+                logging.info(f"Extracted original invoice number: {original_invoice_number}")
 
         if "Partial" in row[2]:
             refund_type = "Partial Refund"
@@ -426,16 +454,28 @@ def process_refund(row, rows, writer, orders_dict):
 
         refund_amount = - abs(refund_amount)
 
+        # Generate cancellation invoice number
+        print(original_invoice_number)
+        print(address)
+        print(address_details)
+        print(sale_row)
+        cancellation_invoice_number = generate_invoice_number(date, is_cancellation=True)
+
         output_row = [
             date.strftime("%d.%m.%Y"),
             "Rückerstattung",
             buyer,
-            f"{refund_type} Bestellung #{order_info} {calculation_details}",
+            f"Invoice {cancellation_invoice_number} - {refund_type} Bestellung #{order_info} {calculation_details}",
             f"{refund_amount:,.2f}".replace('.', ',')
         ]
 
         writer.writerow(output_row)
         logging.info(f"Wrote refund row to CSV: {output_row}")
+
+        # Generate XRechnung for cancellation invoice
+        generate_xrechnung_lxml(cancellation_invoice_number, order_info, buyer, refund_amount, date, address_details, country_codes, is_cancellation=True, original_invoice_number=original_invoice_number)
+        logging.info(f"Generated XRechnung for cancellation invoice: {cancellation_invoice_number}")
+
     except Exception as e:
         logging.error(f"Error processing refund row: {row}. Error: {e}")
         raise
@@ -517,7 +557,7 @@ def write_summarized_data(data, last_day_of_month, writer):
                 writer.writerow(output_row)
                 logging.info(f"Wrote row to CSV: {output_row}")
 
-def convert_csv(input_file, output_file):
+def convert_csv(input_file, output_file, orders_file=None):
     """Converts the input CSV to the output CSV with the specified transformations."""
     filename_prefix = "convert_csv"
     datetime_part = get_datetime_filename()
@@ -528,9 +568,10 @@ def convert_csv(input_file, output_file):
     logging.info(f"Input file: {input_file}")
     logging.info(f"Input file hash: {calculate_file_hash(input_file)}")
 
+    # Load country codes at the beginning
+    country_codes = load_country_codes()
+
     orders_dict = {}
-    #if orders_file:
-    #logging.info(f"Loading orders file: {orders_file}")
     orders_dict = load_orders_file()
 
     data = {}
@@ -555,9 +596,9 @@ def convert_csv(input_file, output_file):
             if type == "Deposit":
                 process_deposit(row, writer_unsorted)
             elif type == "Sale":
-                process_sale(row, rows, writer_unsorted, orders_dict)
+                process_sale(row, rows, writer_unsorted, orders_dict, country_codes)
             elif type == "Refund":
-                process_refund(row, rows, writer_unsorted, orders_dict)
+                process_refund(row, rows, writer_unsorted, orders_dict, country_codes)
             elif type in ("Fee", "Marketing"):
                 data, current_month, next_listing_fee_is_renew = process_fee(row, data, current_month, 
                                                                           writer_unsorted, next_listing_fee_is_renew)
@@ -582,7 +623,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Convert Etsy CSV statement.')
     parser.add_argument('-infile', '--input_file', required=True, help='Path to the input CSV file')
     parser.add_argument('-outfile', '--output_file', required=True, help='Path to the output CSV file')
-    # parser.add_argument('-ordersfile', '--orders_file', help='Path to the Etsy orders CSV file for address details')
     args = parser.parse_args()
 
     convert_csv(args.input_file, args.output_file)
