@@ -35,7 +35,7 @@ SENDER_COUNTRY = os.getenv("SENDER_COUNTRY")
 SENDER_PHONE_NUMBER = os.getenv("SENDER_PHONE_NUMBER")
 SENDER_MAIL = os.getenv("SENDER_MAIL")
 SENDER_VAT_ID = os.getenv("SENDER_VAT_ID")
-
+SENDER_HRA = os.getenv("SENDER_HRA")
 # Global counter for invoice numbers
 invoice_counter = 0
 
@@ -201,7 +201,7 @@ def generate_xrechnung_lxml(invoice_number, order_info, buyer, amount, date, add
     etree.SubElement(root, etree.QName(NSMAP["cbc"], "DocumentCurrencyCode")).text = "EUR"
 
     # B2C keine Leitweg ID
-    # etree.SubElement(root, etree.QName(NSMAP["cbc"], "BuyerReference")).text = ""
+    etree.SubElement(root, etree.QName(NSMAP["cbc"], "BuyerReference")).text = "NOT_REQUIRED"
     
     # Add Billing Reference
     if is_cancellation and original_invoice_number:
@@ -220,7 +220,6 @@ def generate_xrechnung_lxml(invoice_number, order_info, buyer, amount, date, add
     party_name = etree.SubElement(party, etree.QName(NSMAP["cac"], "PartyName"))
     etree.SubElement(party_name, etree.QName(NSMAP["cbc"], "Name")).text = SENDER_NAME
 
-    
     # Add seller postal address
     postal_address = etree.SubElement(party, etree.QName(NSMAP["cac"], "PostalAddress"))
     etree.SubElement(postal_address, etree.QName(NSMAP["cbc"], "StreetName")).text = SENDER_STREET
@@ -240,7 +239,7 @@ def generate_xrechnung_lxml(invoice_number, order_info, buyer, amount, date, add
     legal_entity = etree.SubElement(party, etree.QName(NSMAP["cac"], "PartyLegalEntity"))
     etree.SubElement(legal_entity, etree.QName(NSMAP["cbc"], "RegistrationName")).text = SENDER_COMPANY_NAME
     #etree.SubElement(legal_entity, etree.QName(NSMAP["cbc"], "CompanyID"), attrib={"schemeID": "0198"}).text = SENDER_VAT_ID
-    etree.SubElement(legal_entity, etree.QName(NSMAP["cbc"], "CompanyID")).text = "HRA 106602, München"
+    etree.SubElement(legal_entity, etree.QName(NSMAP["cbc"], "CompanyID"), attrib={"schemeID": "0201"}).text = SENDER_HRA
 
     # Add seller contact
     contact = etree.SubElement(party, etree.QName(NSMAP["cac"], "Contact"))
@@ -254,7 +253,7 @@ def generate_xrechnung_lxml(invoice_number, order_info, buyer, amount, date, add
     
     # Add Buyer Email (PEPPOL-EN16931-R020) - Since we not have we write no-mail@etsy.com
     # NO Buyer Email
-    # etree.SubElement(party, etree.QName(NSMAP["cbc"], "EndpointID"), attrib={"schemeID": "EM"}).text = "no-email@etsy.com"
+    etree.SubElement(party, etree.QName(NSMAP["cbc"], "EndpointID"), attrib={"schemeID": "EM"}).text = "no-email@etsy.com"
 
     # Add buyer postal address
     postal_address = etree.SubElement(party, etree.QName(NSMAP["cac"], "PostalAddress"))
@@ -269,15 +268,10 @@ def generate_xrechnung_lxml(invoice_number, order_info, buyer, amount, date, add
     # Add buyer legal entity
     legal_entity = etree.SubElement(party, etree.QName(NSMAP["cac"], "PartyLegalEntity"))
     etree.SubElement(legal_entity, etree.QName(NSMAP["cbc"], "RegistrationName")).text = "Name Anonymisiert" # buyer
-
     
-    # No Buyer TAX ID Needed since B2C
-    #etree.SubElement(legal_entity, etree.QName(NSMAP["cbc"], "CompanyID"), attrib={"schemeID": #"0198"}).text = "DE123456789"
-
     # Add payment means (42 = Payment into an account)
     payment_means = etree.SubElement(root, etree.QName(NSMAP["cac"], "PaymentMeans"))
     etree.SubElement(payment_means, etree.QName(NSMAP["cbc"], "PaymentMeansCode")).text = "42"
-    #etree.SubElement(payment_means, etree.QName(NSMAP["cbc"], "InstructionNote")).text = "Payment processed by Etsy Payments"
 
     # Add tax total
     tax_total = etree.SubElement(root, etree.QName(NSMAP["cac"], "TaxTotal"))
