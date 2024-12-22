@@ -1,2 +1,3 @@
 pandas
 hashlib
+python-xbrl

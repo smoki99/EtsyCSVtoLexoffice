@@ -4,6 +4,36 @@ import pandas as pd
 import logging
 import hashlib
 import argparse
+import os
+from dotenv import load_dotenv
+from decimal import Decimal
+from lxml import etree
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Configuration for EU countries and VAT rates
+EU_COUNTRIES = {
+    "AT": "Austria", "BE": "Belgium", "BG": "Bulgaria", "CY": "Cyprus", "CZ": "Czech Republic",
+    "DE": "Germany", "DK": "Denmark", "EE": "Estonia", "ES": "Spain", "FI": "Finland", "FR": "France",
+    "GR": "Greece", "HR": "Croatia", "HU": "Hungary", "IE": "Ireland", "IT": "Italy", "LT": "Lithuania",
+    "LU": "Luxembourg", "LV": "Latvia", "MT": "Malta", "NL": "Netherlands", "PL": "Poland",
+    "PT": "Portugal", "RO": "Romania", "SE": "Sweden", "SI": "Sloven", "SK": "Slovakia"
+}
+
+# Sender address from .env file
+SENDER_COMPANY_NAME = os.getenv("SENDER_COMPANY_NAME")
+SENDER_NAME = os.getenv("SENDER_NAME")
+SENDER_STREET = os.getenv("SENDER_STREET")
+SENDER_CITY = os.getenv("SENDER_CITY")
+SENDER_POSTALCODE = os.getenv("SENDER_POSTALCODE")
+SENDER_COUNTRY = os.getenv("SENDER_COUNTRY")
+SENDER_PHONE_NUMBER = os.getenv("SENDER_PHONE_NUMBER")
+SENDER_MAIL = os.getenv("SENDER_MAIL")
+SENDER_VAT_ID = os.getenv("SENDER_VAT_ID")
+
+# Global counter for invoice numbers
+invoice_counter = 0
 
 # Function to calculate Hash SHA-256 for a file
 def calculate_file_hash(filepath):
@@ -20,15 +50,12 @@ def get_datetime_filename():
 
 def configure_logging(filename):
     """Configures logging to write to the specified file."""
-    # Remove any existing handlers
     for handler in logging.getLogger().handlers[:]:
         logging.getLogger().removeHandler(handler)
 
-    # Create a new FileHandler for the log file
     file_handler = logging.FileHandler(filename)
     file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 
-    # Add the new handler to the logger
     logging.getLogger().addHandler(file_handler)
     logging.getLogger().setLevel(logging.INFO)
 
@@ -59,9 +86,451 @@ def load_orders_file(orders_file):
         for row in reader:
             orders_dict[row["Order ID"]] = {
                 "Full Name": row["Full Name"],
-                "Address": f"{row['Street 1']} {row['Street 2']}, {row['Ship City']}, {row['Ship State']} {row['Ship Zipcode']}, {row['Ship Country']}"
+                "Street 1": row["Street 1"],
+                "Street 2": row["Street 2"],
+                "Ship City": row["Ship City"],
+                "Ship State": row["Ship State"],
+                "Ship Zipcode": row["Ship Zipcode"],
+                "Ship Country": row["Ship Country"]
             }
     return orders_dict
+
+# ISO 3166-1 alpha-2 country code mapping
+COUNTRY_CODE_MAPPING = {
+    "Afghanistan": "AF",
+    "Albania": "AL",
+    "Algeria": "DZ",
+    "American Samoa": "AS",
+    "Andorra": "AD",
+    "Angola": "AO",
+    "Anguilla": "AI",
+    "Antarctica": "AQ",
+    "Antigua and Barbuda": "AG",
+    "Argentina": "AR",
+    "Armenia": "AM",
+    "Aruba": "AW",
+    "Australia": "AU",
+    "Austria": "AT",
+    "Azerbaijan": "AZ",
+    "Bahamas": "BS",
+    "Bahrain": "BH",
+    "Bangladesh": "BD",
+    "Barbados": "BB",
+    "Belarus": "BY",
+    "Belgium": "BE",
+    "Belize": "BZ",
+    "Benin": "BJ",
+    "Bermuda": "BM",
+    "Bhutan": "BT",
+    "Bolivia (Plurinational State of)": "BO",
+    "Bonaire, Sint Eustatius and Saba": "BQ",
+    "Bosnia and Herzegovina": "BA",
+    "Botswana": "BW",
+    "Bouvet Island": "BV",
+    "Brazil": "BR",
+    "British Indian Ocean Territory": "IO",
+    "Brunei Darussalam": "BN",
+    "Bulgaria": "BG",
+    "Burkina Faso": "BF",
+    "Burundi": "BI",
+    "Cabo Verde": "CV",
+    "Cambodia": "KH",
+    "Cameroon": "CM",
+    "Canada": "CA",
+    "Cayman Islands": "KY",
+    "Central African Republic": "CF",
+    "Chad": "TD",
+    "Chile": "CL",
+    "China": "CN",
+    "Christmas Island": "CX",
+    "Cocos (Keeling) Islands": "CC",
+    "Colombia": "CO",
+    "Comoros": "KM",
+    "Congo": "CG",
+    "Congo, Democratic Republic of the": "CD",
+    "Cook Islands": "CK",
+    "Costa Rica": "CR",
+    "Côte d'Ivoire": "CI",
+    "Croatia": "HR",
+    "Cuba": "CU",
+    "Curaçao": "CW",
+    "Cyprus": "CY",
+    "Czechia": "CZ",
+    "Denmark": "DK",
+    "Djibouti": "DJ",
+    "Dominica": "DM",
+    "Dominican Republic": "DO",
+    "Ecuador": "EC",
+    "Egypt": "EG",
+    "El Salvador": "SV",
+    "Equatorial Guinea": "GQ",
+    "Eritrea": "ER",
+    "Estonia": "EE",
+    "Eswatini": "SZ",
+    "Ethiopia": "ET",
+    "Falkland Islands (Malvinas)": "FK",
+    "Faroe Islands": "FO",
+    "Fiji": "FJ",
+    "Finland": "FI",
+    "France": "FR",
+    "French Guiana": "GF",
+    "French Polynesia": "PF",
+    "French Southern Territories": "TF",
+    "Gabon": "GA",
+    "Gambia": "GM",
+    "Georgia": "GE",
+    "Germany": "DE",
+    "Ghana": "GH",
+    "Gibraltar": "GI",
+    "Greece": "GR",
+    "Greenland": "GL",
+    "Grenada": "GD",
+    "Guadeloupe": "GP",
+    "Guam": "GU",
+    "Guatemala": "GT",
+    "Guernsey": "GG",
+    "Guinea": "GN",
+    "Guinea-Bissau": "GW",
+    "Guyana": "GY",
+    "Haiti": "HT",
+    "Heard Island and McDonald Islands": "HM",
+    "Holy See": "VA",
+    "Honduras": "HN",
+    "Hong Kong": "HK",
+    "Hungary": "HU",
+    "Iceland": "IS",
+    "India": "IN",
+    "Indonesia": "ID",
+    "Iran (Islamic Republic of)": "IR",
+    "Iraq": "IQ",
+    "Ireland": "IE",
+    "Isle of Man": "IM",
+    "Israel": "IL",
+    "Italy": "IT",
+    "Jamaica": "JM",
+    "Japan": "JP",
+    "Jersey": "JE",
+    "Jordan": "JO",
+    "Kazakhstan": "KZ",
+    "Kenya": "KE",
+    "Kiribati": "KI",
+    "Korea (Democratic People's Republic of)": "KP",
+    "Korea, Republic of": "KR",
+    "Kuwait": "KW",
+    "Kyrgyzstan": "KG",
+    "Lao People's Democratic Republic": "LA",
+    "Latvia": "LV",
+    "Lebanon": "LB",
+    "Lesotho": "LS",
+    "Liberia": "LR",
+    "Libya": "LY",
+    "Liechtenstein": "LI",
+    "Lithuania": "LT",
+    "Luxembourg": "LU",
+    "Macao": "MO",
+    "Madagascar": "MG",
+    "Malawi": "MW",
+    "Malaysia": "MY",
+    "Maldives": "MV",
+    "Mali": "ML",
+    "Malta": "MT",
+    "Marshall Islands": "MH",
+    "Martinique": "MQ",
+    "Mauritania": "MR",
+    "Mauritius": "MU",
+    "Mayotte": "YT",
+    "Mexico": "MX",
+    "Micronesia (Federated States of)": "FM",
+    "Moldova, Republic of": "MD",
+    "Monaco": "MC",
+    "Mongolia": "MN",
+    "Montenegro": "ME",
+    "Montserrat": "MS",
+    "Morocco": "MA",
+    "Mozambique": "MZ",
+    "Myanmar": "MM",
+    "Namibia": "NA",
+    "Nauru": "NR",
+    "Nepal": "NP",
+    "Netherlands": "NL",
+    "New Caledonia": "NC",
+    "New Zealand": "NZ",
+    "Nicaragua": "NI",
+    "Niger": "NE",
+    "Nigeria": "NG",
+    "Niue": "NU",
+    "Norfolk Island": "NF",
+    "Northern Mariana Islands": "MP",
+    "Norway": "NO",
+    "Oman": "OM",
+    "Pakistan": "PK",
+    "Palau": "PW",
+    "Palestine, State of": "PS",
+    "Panama": "PA",
+    "Papua New Guinea": "PG",
+    "Paraguay": "PY",
+    "Peru": "PE",
+    "Philippines": "PH",
+    "Pitcairn": "PN",
+    "Poland": "PL",
+    "Portugal": "PT",
+    "Puerto Rico": "PR",
+    "Qatar": "QA",
+    "Réunion": "RE",
+    "Romania": "RO",
+    "Russian Federation": "RU",
+    "Rwanda": "RW",
+    "Saint Barthélemy": "BL",
+    "Saint Helena, Ascension and Tristan da Cunha": "SH",
+    "Saint Kitts and Nevis": "KN",
+    "Saint Lucia": "LC",
+    "Saint Martin (French part)": "MF",
+    "Saint Pierre and Miquelon": "PM",
+    "Saint Vincent and the Grenadines": "VC",
+    "Samoa": "WS",
+    "San Marino": "SM",
+    "Sao Tome and Principe": "ST",
+    "Saudi Arabia": "SA",
+    "Senegal": "SN",
+    "Serbia": "RS",
+    "Seychelles": "SC",
+    "Sierra Leone": "SL",
+    "Singapore": "SG",
+    "Sint Maarten (Dutch part)": "SX",
+    "Slovakia": "SK",
+    "Slovenia": "SI",
+    "Solomon Islands": "SB",
+    "Somalia": "SO",
+    "South Africa": "ZA",
+    "South Georgia and the South Sandwich Islands": "GS",
+    "South Sudan": "SS",
+    "Spain": "ES",
+    "Sri Lanka": "LK",
+    "Sudan": "SD",
+    "Suriname": "SR",
+    "Svalbard and Jan Mayen": "SJ",
+    "Sweden": "SE",
+    "Switzerland": "CH",
+    "Syrian Arab Republic": "SY",
+    "Taiwan, Province of China": "TW",
+    "Tajikistan": "TJ",
+    "Tanzania, United Republic of": "TZ",
+    "Thailand": "TH",
+    "Timor-Leste": "TL",
+    "Togo": "TG",
+    "Tokelau": "TK",
+    "Tonga": "TO",
+    "Trinidad and Tobago": "TT",
+    "Tunisia": "TN",
+    "Turkey": "TR",
+    "Turkmenistan": "TM",
+    "Turks and Caicos Islands": "TC",
+    "Tuvalu": "TV",
+    "Uganda": "UG",
+    "Ukraine": "UA",
+    "United Arab Emirates": "AE",
+    "United Kingdom": "GB",
+    "United States": "US",
+    "United States Minor Outlying Islands": "UM",
+    "Uruguay": "UY",
+    "Uzbekistan": "UZ",
+    "Vanuatu": "VU",
+    "Venezuela (Bolivarian Republic of)": "VE",
+    "Viet Nam": "VN",
+    "Virgin Islands (British)": "VG",
+    "Virgin Islands (U.S.)": "VI",
+    "Wallis and Futuna": "WF",
+    "Western Sahara": "EH",
+    "Yemen": "YE",
+    "Zambia": "ZM",
+    "Zimbabwe": "ZW",
+    "Åland Islands": "AX"
+}
+
+# Function to map country name to ISO 3166-1 alpha-2 code
+def get_country_code(country_name):
+    return COUNTRY_CODE_MAPPING.get(country_name, "")  # Return empty string if not found
+
+def generate_xrechnung_lxml(order_info, buyer, amount, date, address_details):
+    global invoice_counter
+    invoice_counter += 1
+    year = str(date.year)[-2:]
+    month = str(date.month).zfill(2)
+    invoice_number = f"ETSY-{year}{month}-{invoice_counter:04}"
+
+    # Create Rechnungen folder if it doesn't exist
+    invoice_folder = "Rechnungen"
+    if not os.path.exists(invoice_folder):
+        os.makedirs(invoice_folder)
+
+    # Determine VAT rate and note
+    country_code = address_details.get("Ship Country", "")
+    if country_code not in EU_COUNTRIES:
+        vat_rate = Decimal("0.00")
+        vat_category = "G" # Export outside the EU
+        vat_note = "Steuerfreie Ausfuhrlieferung"
+    else:
+        vat_rate = Decimal("0.19")
+        vat_category = "S" # Standard rate
+        vat_note = "Innergemeinschaftliche Lieferung, Rechnungsstellung mit deutscher Umsatzsteuer aufgrund Kleinunternehmerregelung bis 10.000€ Umsatz."
+
+    # Calculate VAT amount and total amount
+    vat_amount = (Decimal(str(amount)) * vat_rate).quantize(Decimal("0.01"))
+    total_amount = Decimal(str(amount)) + vat_amount
+
+    # Define namespaces
+    NSMAP = {
+        None: "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2",  # Default namespace
+        "cac": "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2",
+        "cbc": "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2",
+        "xsi": "http://www.w3.org/2001/XMLSchema-instance"
+    }
+
+    # Create root element using QName and nsmap
+    root = etree.Element(etree.QName(NSMAP[None], "Invoice"), nsmap=NSMAP)
+
+    # Add schema location information to the root element
+    root.attrib["{http://www.w3.org/2001/XMLSchema-instance}schemaLocation"] = \
+        "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2 http://docs.oasis-open.org/ubl/os-UBL-2.1/xsd/maindoc/UBL-Invoice-2.1.xsd"
+    
+    # Add CustomizationID
+    CustomizationID = etree.SubElement(root, etree.QName(NSMAP["cbc"], "CustomizationID"))
+    CustomizationID.text = "urn:cen.eu:en16931:2017#compliant#urn:xoev-de:kosit:standard:xrechnung_3.0"
+    
+    # Add ProfileID
+    ProfileID = etree.SubElement(root, etree.QName(NSMAP["cbc"], "ProfileID"))
+    ProfileID.text = "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0"
+
+    # Add invoice number
+    etree.SubElement(root, etree.QName(NSMAP["cbc"], "ID")).text = invoice_number
+
+    # Add issue date
+    etree.SubElement(root, etree.QName(NSMAP["cbc"], "IssueDate")).text = date.strftime("%Y-%m-%d")
+
+    # Add due date
+    due_date = date + pd.DateOffset(days=14)
+    etree.SubElement(root, etree.QName(NSMAP["cbc"], "DueDate")).text = due_date.strftime("%Y-%m-%d")
+
+    # Add invoice type code (380 = commercial invoice)
+    etree.SubElement(root, etree.QName(NSMAP["cbc"], "InvoiceTypeCode")).text = "380"
+
+    # Add document currency code
+    etree.SubElement(root, etree.QName(NSMAP["cbc"], "DocumentCurrencyCode")).text = "EUR"
+
+    # Add buyer reference
+    etree.SubElement(root, etree.QName(NSMAP["cbc"], "BuyerReference")).text = buyer
+
+    # Add AccountingSupplierParty
+    supplier_party = etree.SubElement(root, etree.QName(NSMAP["cac"], "AccountingSupplierParty"))
+    party = etree.SubElement(supplier_party, etree.QName(NSMAP["cac"], "Party"))
+
+    # Add seller name
+    party_name = etree.SubElement(party, etree.QName(NSMAP["cac"], "PartyName"))
+    etree.SubElement(party_name, etree.QName(NSMAP["cbc"], "Name")).text = SENDER_NAME
+
+    # Add seller postal address
+    postal_address = etree.SubElement(party, etree.QName(NSMAP["cac"], "PostalAddress"))
+    etree.SubElement(postal_address, etree.QName(NSMAP["cbc"], "StreetName")).text = SENDER_STREET
+    etree.SubElement(postal_address, etree.QName(NSMAP["cbc"], "AdditionalStreetName")).text = ""
+    etree.SubElement(postal_address, etree.QName(NSMAP["cbc"], "CityName")).text = SENDER_CITY
+    etree.SubElement(postal_address, etree.QName(NSMAP["cbc"], "PostalZone")).text = SENDER_POSTALCODE
+    country = etree.SubElement(postal_address, etree.QName(NSMAP["cac"], "Country"))
+    etree.SubElement(country, etree.QName(NSMAP["cbc"], "IdentificationCode")).text = SENDER_COUNTRY
+
+    # Add seller tax scheme
+    party_tax_scheme = etree.SubElement(party, etree.QName(NSMAP["cac"], "PartyTaxScheme"))
+    etree.SubElement(party_tax_scheme, etree.QName(NSMAP["cbc"], "CompanyID")).text = SENDER_VAT_ID
+    tax_scheme = etree.SubElement(party_tax_scheme, etree.QName(NSMAP["cac"], "TaxScheme"))
+    etree.SubElement(tax_scheme, etree.QName(NSMAP["cbc"], "ID")).text = "VAT"
+
+    # Add seller legal entity
+    legal_entity = etree.SubElement(party, etree.QName(NSMAP["cac"], "PartyLegalEntity"))
+    etree.SubElement(legal_entity, etree.QName(NSMAP["cbc"], "RegistrationName")).text = SENDER_COMPANY_NAME
+    etree.SubElement(legal_entity, etree.QName(NSMAP["cbc"], "CompanyID"), attrib={"schemeID": "0198"}).text = SENDER_VAT_ID
+
+    # Add seller contact
+    contact = etree.SubElement(party, etree.QName(NSMAP["cac"], "Contact"))
+    etree.SubElement(contact, etree.QName(NSMAP["cbc"], "Name")).text = SENDER_NAME
+    etree.SubElement(contact, etree.QName(NSMAP["cbc"], "Telephone")).text = SENDER_PHONE_NUMBER
+    etree.SubElement(contact, etree.QName(NSMAP["cbc"], "ElectronicMail")).text = SENDER_MAIL
+
+    # Add AccountingCustomerParty
+    customer_party = etree.SubElement(root, etree.QName(NSMAP["cac"], "AccountingCustomerParty"))
+    party = etree.SubElement(customer_party, etree.QName(NSMAP["cac"], "Party"))
+    
+    # Add buyer postal address
+    postal_address = etree.SubElement(party, etree.QName(NSMAP["cac"], "PostalAddress"))
+    etree.SubElement(postal_address, etree.QName(NSMAP["cbc"], "StreetName")).text = address_details.get("Street 1", "")
+    etree.SubElement(postal_address, etree.QName(NSMAP["cbc"], "AdditionalStreetName")).text = address_details.get("Street 2", "")
+    etree.SubElement(postal_address, etree.QName(NSMAP["cbc"], "CityName")).text = address_details.get("Ship City", "")
+    etree.SubElement(postal_address, etree.QName(NSMAP["cbc"], "PostalZone")).text = address_details.get("Ship Zipcode", "")
+    country = etree.SubElement(postal_address, etree.QName(NSMAP["cac"], "Country"))
+
+    etree.SubElement(country, etree.QName(NSMAP["cbc"], "IdentificationCode")).text = get_country_code(address_details.get("Ship Country", ""))
+    
+    # Add buyer legal entity
+    legal_entity = etree.SubElement(party, etree.QName(NSMAP["cac"], "PartyLegalEntity"))
+    etree.SubElement(legal_entity, etree.QName(NSMAP["cbc"], "RegistrationName")).text = buyer
+    
+    # No Buyer TAX ID Needed since B2C
+    #etree.SubElement(legal_entity, etree.QName(NSMAP["cbc"], "CompanyID"), attrib={"schemeID": #"0198"}).text = "DE123456789"
+
+    # Add payment means (58 = SEPA credit transfer)
+    payment_means = etree.SubElement(root, etree.QName(NSMAP["cac"], "PaymentMeans"))
+    etree.SubElement(payment_means, etree.QName(NSMAP["cbc"], "PaymentMeansCode"), attrib={"name": "SEPA credit transfer"}).text = "58"
+    # Add PayeeFinancialAccount with IBAN
+    payee_financial_account = etree.SubElement(payment_means, etree.QName(NSMAP["cac"], "PayeeFinancialAccount"))
+    etree.SubElement(payee_financial_account, etree.QName(NSMAP["cbc"], "ID")).text = "DE12345678901234567890" # Replace with IBAN
+
+    # Add tax total
+    tax_total = etree.SubElement(root, etree.QName(NSMAP["cac"], "TaxTotal"))
+    etree.SubElement(tax_total, etree.QName(NSMAP["cbc"], "TaxAmount"), attrib={"currencyID": "EUR"}).text = str(vat_amount)
+
+    tax_subtotal = etree.SubElement(tax_total, etree.QName(NSMAP["cac"], "TaxSubtotal"))
+    etree.SubElement(tax_subtotal, etree.QName(NSMAP["cbc"], "TaxableAmount"), attrib={"currencyID": "EUR"}).text = str(amount)
+    etree.SubElement(tax_subtotal, etree.QName(NSMAP["cbc"], "TaxAmount"), attrib={"currencyID": "EUR"}).text = str(vat_amount)
+    tax_category = etree.SubElement(tax_subtotal, etree.QName(NSMAP["cac"], "TaxCategory"))
+    etree.SubElement(tax_category, etree.QName(NSMAP["cbc"], "ID")).text = vat_category
+    etree.SubElement(tax_category, etree.QName(NSMAP["cbc"], "Percent")).text = str(vat_rate * 100)
+    # Add exemption reason if the rate is 0
+    if vat_rate == 0:
+      etree.SubElement(tax_category, etree.QName(NSMAP["cbc"], "TaxExemptionReason")).text = vat_note
+    tax_scheme = etree.SubElement(tax_category, etree.QName(NSMAP["cac"], "TaxScheme"))
+    etree.SubElement(tax_scheme, etree.QName(NSMAP["cbc"], "ID")).text = "VAT"
+
+    # Add legal monetary total
+    legal_monetary_total = etree.SubElement(root, etree.QName(NSMAP["cac"], "LegalMonetaryTotal"))
+    etree.SubElement(legal_monetary_total, etree.QName(NSMAP["cbc"], "LineExtensionAmount"), attrib={"currencyID": "EUR"}).text = str(amount)
+    etree.SubElement(legal_monetary_total, etree.QName(NSMAP["cbc"], "TaxExclusiveAmount"), attrib={"currencyID": "EUR"}).text = str(amount)
+    etree.SubElement(legal_monetary_total, etree.QName(NSMAP["cbc"], "TaxInclusiveAmount"), attrib={"currencyID": "EUR"}).text = str(total_amount)
+    etree.SubElement(legal_monetary_total, etree.QName(NSMAP["cbc"], "PayableAmount"), attrib={"currencyID": "EUR"}).text = str(total_amount)
+
+    # Add invoice line
+    invoice_line = etree.SubElement(root, etree.QName(NSMAP["cac"], "InvoiceLine"))
+    etree.SubElement(invoice_line, etree.QName(NSMAP["cbc"], "ID")).text = "1"
+    etree.SubElement(invoice_line, etree.QName(NSMAP["cbc"], "InvoicedQuantity"), attrib={"unitCode": "C62"}).text = "1"
+    etree.SubElement(invoice_line, etree.QName(NSMAP["cbc"], "LineExtensionAmount"), attrib={"currencyID": "EUR"}).text = str(amount)
+    item = etree.SubElement(invoice_line, etree.QName(NSMAP["cac"], "Item"))
+    etree.SubElement(item, etree.QName(NSMAP["cbc"], "Description")).text = f"Etsy Order {order_info}"
+    etree.SubElement(item, etree.QName(NSMAP["cbc"], "Name")).text = "Order"
+    classified_tax_category = etree.SubElement(item, etree.QName(NSMAP["cac"], "ClassifiedTaxCategory"))
+    etree.SubElement(classified_tax_category, etree.QName(NSMAP["cbc"], "ID")).text = vat_category
+    etree.SubElement(classified_tax_category, etree.QName(NSMAP["cbc"], "Percent")).text = str(vat_rate * 100)
+    tax_scheme = etree.SubElement(classified_tax_category, etree.QName(NSMAP["cac"], "TaxScheme"))
+    etree.SubElement(tax_scheme, etree.QName(NSMAP["cbc"], "ID")).text = "VAT"
+    price = etree.SubElement(invoice_line, etree.QName(NSMAP["cac"], "Price"))
+    etree.SubElement(price, etree.QName(NSMAP["cbc"], "PriceAmount"), attrib={"currencyID": "EUR"}).text = str(amount)
+
+    # Serialize to XML
+    xml_string = etree.tostring(root, pretty_print=True, encoding="UTF-8", xml_declaration=True).decode("utf-8")
+
+    # Save the XRechnung XML
+    invoice_filename = f"{invoice_number}.xml"
+    invoice_filepath = os.path.join(invoice_folder, invoice_filename)
+    with open(invoice_filepath, "w", encoding="utf-8") as xml_file:
+        xml_file.write(xml_string)
+
+    logging.info(f"Generated XRechnung: {invoice_filename}")
 
 def process_sale(row, rows, writer, orders_dict):
     try:
@@ -87,7 +556,8 @@ def process_sale(row, rows, writer, orders_dict):
                 calculation_details = f"({row[7].strip()} €)"
 
             # Fetch address details from the orders dictionary
-            address = orders_dict.get(order_info, {}).get("Address", "Address not found")
+            address_details = orders_dict.get(order_info, {})
+            address = f"{address_details.get('Street 1', '')} {address_details.get('Street 2', '')}, {address_details.get('Ship City', '')}, {address_details.get('Ship State', '')} {address_details.get('Ship Zipcode', '')}, {address_details.get('Ship Country', '')}"
             calculation_details += f" | Address: {address}"
             calculation_details = calculation_details.replace(',',';')
 
@@ -100,6 +570,9 @@ def process_sale(row, rows, writer, orders_dict):
             ]
             writer.writerow(output_row)
             logging.info(f"Wrote row to CSV: {output_row}")
+
+            # Generate XRechnung
+            generate_xrechnung_lxml(order_info, buyer, amount, date, address_details)
         
     except Exception as e:
         logging.error(f"Error processing sale row: {row}. Error: {e}")
@@ -111,10 +584,8 @@ def process_refund(row, rows, writer, orders_dict):
         date = datetime.strptime(row[0].strip('"'), "%B %d, %Y").date()
         order_info = row[2].split("#")[1].strip()
 
-        # Get buyer name if available, otherwise use a generic "Etsy Refund"
         buyer = orders_dict.get(order_info, {}).get("Full Name", "Etsy Refund")
 
-        # Initialize refund amount with the amount from the refund row
         if row[6] == '--':
             if row[7] != '--':
                 refund_amount = float(row[7].replace('€', '').replace(',', '.').strip())
@@ -123,61 +594,51 @@ def process_refund(row, rows, writer, orders_dict):
         else:
             refund_amount = float(row[6].replace('€', '').replace(',', '.').strip())
 
-        # Find corresponding fee credit rows for this refund
         fee_credit_rows = []
         for r in rows:
             if r[1] == "Fee" and "Credit for" in r[2] and f"Order #{order_info}" in r[3]:
                 fee_credit_rows.append(r)
 
-        # Adjust refund amount for fee credits (add back to refund amount)
         total_fee_credit = 0
         for fee_credit_row in fee_credit_rows:
             fee_credit_amount = float(fee_credit_row[7].replace('€', '').replace(',', '.').strip())
             total_fee_credit += fee_credit_amount
 
-            # Check for both "Credit for processing fee" and "Credit for transaction fee"
             if "Credit for processing fee" in fee_credit_row[2] or "Credit for transaction fee" in fee_credit_row[2]:
-                refund_amount += fee_credit_amount  # Add back to refund amount
+                refund_amount += fee_credit_amount
                 logging.info(f"Adjusting refund amount by +{fee_credit_amount:.2f} EUR for fee credit: {fee_credit_row[2]}")
             else:
                 logging.warning(f"Fee credit type not handled: {fee_credit_row[2]}")
 
-        # Find the original sale row
         sale_row = None
         for r in rows:
             if r[1] == "Sale" and "for Order" in r[2] and order_info in r[2]:
                 sale_row = r
                 break
         
-        # Find the corresponding sales tax row for that order
         tax_row = None
         for r in rows:
             if r[1] == "Tax" and r[3] == f"Order #{order_info}":
                 tax_row = r
                 break
-        
-        # Get the sale amount (before tax deduction) and sales tax amount
+
         if sale_row:
             sale_amount = float(sale_row[7].replace('€', '').replace(',', '.').strip())
             if tax_row:
-                sales_tax_amount = float(tax_row[6].replace('€', '').replace(',', '.').replace('-', '').strip())
+                sales_tax_amount = float(tax_row[6].replace('€', '').replace('-', '').strip())
             else:
                 sales_tax_amount = 0.0
 
-            # Calculate the refund amount (sale amount - sales tax) and negate it
             amount = -(sale_amount - sales_tax_amount)
             logging.info(f"Setting refund amount to {amount:.2f} EUR (negating original sale amount minus sales tax)")
 
-        # Fetch address details from the orders dictionary
         address = orders_dict.get(order_info, {}).get("Address", "Address not found")
 
-        # Create calculation details string with partial refund information
         if sale_row:
             sale_amount_str = sale_row[7].strip()
         else:
             sale_amount_str = "N/A"
 
-        # Check if it's a partial refund or full refund
         if "Partial" in row[2]:
             refund_type = "Partial Refund"
             calculation_details = f"({sale_amount_str} € (Original Sale) - {row[7].strip()} € (Refund) + {total_fee_credit:.2f} € (Fee Credit))"
@@ -188,15 +649,14 @@ def process_refund(row, rows, writer, orders_dict):
         calculation_details += f" | Address: {address}"
         calculation_details = calculation_details.replace(',', ';')
 
-        # Negate refund amount
         refund_amount = - abs(refund_amount)
 
         output_row = [
             date.strftime("%d.%m.%Y"),
             "Rückerstattung",
             buyer,
-            f"{refund_type} Bestellung #{order_info} {calculation_details}",  # Include calculation details
-            f"{refund_amount:,.2f}".replace('.', ',')  # Amount should be negative
+            f"{refund_type} Bestellung #{order_info} {calculation_details}",
+            f"{refund_amount:,.2f}".replace('.', ',')
         ]
 
         writer.writerow(output_row)
@@ -220,7 +680,6 @@ def process_fee(row, data, current_month, writer, next_listing_fee_is_renew):
 
         title = row[2]
         fees_taxes = row[6]
-        # Credit from Etsy for fees from refunds have to handled like fees
         if "Credit for" in title:
             title = title.split("Credit for ")[1].strip()
 
@@ -236,7 +695,7 @@ def process_fee(row, data, current_month, writer, next_listing_fee_is_renew):
             next_listing_fee_is_renew = True
         elif "Etsy Ads" in title:
             update_fees(data, "Etsy Ireland UC", "Etsy Ads Fees", fees_taxes)
-        elif "Fee for sale made through Offsite Ads" in title:  # New fee type
+        elif "Fee for sale made through Offsite Ads" in title:
             update_fees(data, "Etsy Ireland UC", "Offsite Ads Fees", fees_taxes)
 
         return data, current_month, next_listing_fee_is_renew
@@ -262,7 +721,7 @@ def write_summarized_data(data, last_day_of_month, writer):
     logging.info(f"Writing summarized data for {last_day_of_month}")
     for recipient, fees in data.items():
         for fee_type, amount in fees.items():
-            if fee_type in ("Etsy Ads Fees", "Offsite Ads Fees"): # Include Offsite Ads Fees
+            if fee_type in ("Etsy Ads Fees", "Offsite Ads Fees"):
                 output_row = [
                     last_day_of_month.strftime("%d.%m.%Y"),
                     "Marketing",
@@ -291,7 +750,6 @@ def convert_csv(input_file, output_file, orders_file=None):
 
     configure_logging(log_filename)
 
-    # Log input file name and hash
     logging.info(f"Input file: {input_file}")
     logging.info(f"Input file hash: {calculate_file_hash(input_file)}")
 
@@ -319,7 +777,7 @@ def convert_csv(input_file, output_file, orders_file=None):
                 process_deposit(row, writer_unsorted)
             elif type == "Sale":
                 process_sale(row, rows, writer_unsorted, orders_dict)
-            elif type == "Refund":  # Handle refunds directly
+            elif type == "Refund":
                 process_refund(row, rows, writer_unsorted, orders_dict)
             elif type in ("Fee", "Marketing"):
                 data, current_month, next_listing_fee_is_renew = process_fee(row, data, current_month, 
@@ -339,7 +797,6 @@ def convert_csv(input_file, output_file, orders_file=None):
         rows.sort(key=lambda row: datetime.strptime(row[0], '%d.%m.%Y'), reverse=True)
         writer.writerows(rows)
 
-    # Log output file name and hash
     logging.info(f"Conversion complete. Output saved to {output_file}")
     logging.info(f"Output file hash: {calculate_file_hash(output_file)}")
 
