@@ -540,23 +540,29 @@ def process_fee(row, data, current_month, writer, next_listing_fee_is_renew):
 
         title = row[2]
         fees_taxes = row[6]
+        credit = False
         if "Credit for" in title:
             title = title.split("Credit for ")[1].strip()
+            logging.info("Processing Credit Fees")
+            credit = True
 
-        if "Listing fee" in title and next_listing_fee_is_renew:
+        title = title.lower()
+        if "listing fee" in title and next_listing_fee_is_renew:
             update_fees(data, "Etsy Ireland UC", "Renew Sold Fees", fees_taxes)
             next_listing_fee_is_renew = False
-        elif "Listing fee" in title:
+        elif "listing fee" in title:
             update_fees(data, "Etsy Ireland UC", "Listing Fees", fees_taxes)
-        elif "Transaction fee" in title:
+        elif "transaction fee" in title:
             update_fees(data, "Etsy Ireland UC", "Transaction Fees", fees_taxes)
-        elif "Processing fee" in title:
+        elif "processing fee" in title:
             update_fees(data, "Etsy Ireland UC", "Processing Fees", fees_taxes)
             next_listing_fee_is_renew = True
-        elif "Etsy Ads" in title:
+        elif "etsy ads" in title:
             update_fees(data, "Etsy Ireland UC", "Etsy Ads Fees", fees_taxes)
-        elif "Fee for sale made through Offsite Ads" in title:
+        elif "fee for sale made through offsite ads" in title:
             update_fees(data, "Etsy Ireland UC", "Offsite Ads Fees", fees_taxes)
+        else:
+            logging.error(f"Not processing: %s", row)
 
         return data, current_month, next_listing_fee_is_renew
     except Exception as e:
@@ -570,6 +576,7 @@ def update_fees(data, recipient, fee_type, fees_taxes):
 
     if fees_taxes and fees_taxes != '--':
         fees_taxes_value = float(fees_taxes.replace('-', '').replace('€', '').replace(',', '.'))
+
         if fees_taxes.startswith('-'):
             data[recipient][fee_type] += fees_taxes_value
             logging.info(f"Added {fees_taxes_value:.2f} EUR to {fee_type} for {recipient} (new sum: {data[recipient][fee_type]:.2f} EUR)")
