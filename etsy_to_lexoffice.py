@@ -166,8 +166,11 @@ def generate_xrechnung_lxml(invoice_number, order_info, amount, date,
         vat_note = "Innergemeinschaftliche Lieferung, Rechnungsstellung mit deutscher Umsatzsteuer aufgrund Kleinunternehmerregelung bis 10.000€ Umsatz."
 
     # Calculate VAT amount and total amount
-    vat_amount = (Decimal(str(amount)) * vat_rate).quantize(Decimal("0.01"))
-    total_amount = Decimal(str(amount)) + vat_amount
+    #vat_amount = (Decimal(str(amount)) * vat_rate).quantize(Decimal("0.01"))
+    vat_amount = (Decimal(amount) * vat_rate) / (1 + vat_rate)
+    vat_amount = vat_amount.quantize(Decimal("0.01"))
+
+    total_amount = Decimal(str(amount)) - vat_amount
 
     # Negate amounts for cancellation invoices
     if is_cancellation:
