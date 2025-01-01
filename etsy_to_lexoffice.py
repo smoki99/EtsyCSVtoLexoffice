@@ -107,6 +107,7 @@ def load_orders_file(orders_directory="."):
                         "Ship Country": row["Ship Country"]
                     }
             logging.info("Loaded orders from: %s", filename)
+            logging.info(f"Input file hash: {calculate_file_hash(filename)}")
         except Exception as e:
             logging.error("Error loading orders from %s: %s", filename, e)
     return orders_dict
@@ -563,7 +564,7 @@ def process_fee(row, data, current_month, writer, next_listing_fee_is_renew):
         raise
 
 def update_fees(data, recipient, fee_type, fees_taxes):
-    logging.info(f"Updating fees for {recipient}, {fee_type}, {fees_taxes}")
+    logging.info(f"Updating fees for {recipient}, {fee_type}, {fees_taxes.replace('€','EUR ')}")
     if fee_type not in data[recipient]:
         data[recipient][fee_type] = 0
 
@@ -633,7 +634,7 @@ def convert_csv(input_file, output_file):
 
         # Sort rows by date, oldest first
         rows = sorted(list(reader), key=lambda row: datetime.strptime(row[0].strip('"'), "%B %d, %Y"))
-        logging.info(f"Read and sorted {len(rows)} rows from input file.")
+        logging.info(f"Read and sorted {len(rows)} rows from input file {input_file}")
 
         for row in rows:
             input_type = row[1]

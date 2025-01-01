@@ -15,7 +15,7 @@ Dieses Python-Programm konvertiert eine CSV-Datei von Etsy in ein Format, das f�
 ## Anleitung
 
 1. **CSV-Datei Monthly Payments von Etsy herunterladen:** Laden Sie die gewünschte CSV-Datei aus Ihrem Etsy-Shop herunter, diese können Sie in `input.csv` umbenennen.
-2. **CSV-Datei Orders von Etsy herunterladen:** Laden Sie aus Shop Manager > Einstellungen > Optionen die Orders für die Monate herunter und stellen Sie sicher, dass alle mit `EtsySoldOrders` im Namen beginnen.
+2. **CSV-Datei Orders von Etsy herunterladen:** Laden Sie aus Shop Manager > Einstellungen > Optionen. Hier den Tab "Download Data" wählen. Bei Orders für die Monate herunter und stellen Sie sicher, dass alle mit `EtsySoldOrders` im Namen beginnen.
 3. **Skript herunterladen:** Laden Sie die Datei `etsy_to_lexoffice.py` herunter und speichern Sie sie im gleichen Verzeichnis wie die `input.csv` und `orders.csv`
 4. **Skript ausführen:** Öffnen Sie Ihre Konsole, navigieren Sie zum Verzeichnis der Dateien und führen Sie das Python-Skript aus.
     ```bash
