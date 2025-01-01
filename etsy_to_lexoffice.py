@@ -549,14 +549,15 @@ def process_fee(row, data, current_month, writer, next_listing_fee_is_renew):
         title = title.lower()
         if "listing fee" in title and next_listing_fee_is_renew:
             update_fees(data, "Etsy Ireland UC", "Renew Sold Fees", fees_taxes)
-            next_listing_fee_is_renew = False
+            #next_listing_fee_is_renew = False
         elif "listing fee" in title:
-            update_fees(data, "Etsy Ireland UC", "Listing Fees", fees_taxes)
+            update_fees(data, "Etsy Ireland UC", "Listing Fees (Listing, Renew Expired, Renew Sold)", fees_taxes)
         elif "transaction fee" in title:
             update_fees(data, "Etsy Ireland UC", "Transaction Fees", fees_taxes)
+            #next_listing_fee_is_renew = False
         elif "processing fee" in title:
             update_fees(data, "Etsy Ireland UC", "Processing Fees", fees_taxes)
-            next_listing_fee_is_renew = True
+            #next_listing_fee_is_renew = True
         elif "etsy ads" in title:
             update_fees(data, "Etsy Ireland UC", "Etsy Ads Fees", fees_taxes)
         elif "fee for sale made through offsite ads" in title:
