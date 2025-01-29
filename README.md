@@ -1,15 +1,15 @@
 # EtsyCSVtoLexoffice: Etsy-CSV für Lexoffice konvertieren
 
-Dieses Python-Programm konvertiert eine CSV-Datei von Etsy in ein Format, das für den Import in Lexoffice geeignet ist. Es liest die Datei `input.csv` ein, verarbeitet die Daten und schreibt sie in die Datei `output.csv`. Zusätzlich wird eine Log-Datei erstellt, die den Konvertierungsprozess dokumentiert.
+Dieses Python-Programm konvertiert eine CSV-Datei von Etsy in ein Format, das für den Import in Lexoffice geeignet ist. Es liest die Datei `input.csv` und eine `EtsySoldOrders*.csv` Datei, verarbeitet die Daten und schreibt sie in die Datei `output.csv`. Zusätzlich generiert das Programm XRechnung XML Dateien im Ordner `Rechnungen` und eine Log-Datei, die den Konvertierungsprozess dokumentiert.
 
 **Wichtiger Hinweis:** Dieses Programm dient nur zu Demonstrationszwecken. Der Autor übernimmt keine Garantie für die steuerliche Richtigkeit der Konvertierung. Es liegt in Ihrer Verantwortung, die konvertierten Daten vor dem Import in Lexoffice zu überprüfen und sicherzustellen, dass sie den aktuellen steuerlichen Vorschriften entsprechen.
 
 ## Voraussetzungen
 
 *   **Python 3:** Stellen Sie sicher, dass Python 3 auf Ihrem System installiert ist. Sie können Python von [https://python.org](https://python.org) herunterladen.
-*   **Installierte Pakete:** Sie müssen die Pakete `pandas` und `hashlib` installieren. Führen Sie dazu folgenden Befehl in Ihrer Konsole aus:
+*   **Installierte Pakete:** Sie müssen die Pakete `pandas`, `hashlib` und `lxml` installieren. Führen Sie dazu folgenden Befehl in Ihrer Konsole aus:
     ```bash
-    pip install pandas hashlib
+    pip install pandas hashlib lxml
     ```
 
 ## Anleitung

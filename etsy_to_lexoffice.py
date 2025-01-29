@@ -144,7 +144,7 @@ def generate_invoice_number(date, is_cancellation=False):
     return invoice_number
 
 
-def generate_xrechnung_lxml(invoice_number, order_info, amount, date,
+def generate_xrechnung_lxml(invoice_number, order_info, amount, date, buyer,
                             address_details, country_codes, is_cancellation=False,
                             original_invoice_number=None):
     """Generates an XRechnung XML file."""
@@ -279,7 +279,7 @@ def generate_xrechnung_lxml(invoice_number, order_info, amount, date,
 
     # Add buyer postal address
     postal_address = etree.SubElement(party, etree.QName(nsmap["cac"], "PostalAddress"))
-    etree.SubElement(postal_address, etree.QName(nsmap["cbc"], "StreetName")).text = "Straße Anonymisiert"  # address_details.get("Street 1", "")
+    etree.SubElement(postal_address, etree.QName(nsmap["cbc"], "StreetName")).text = address_details.get("Street 1", "")
     if address_details.get("Street 2", "") != "":
         etree.SubElement(postal_address, etree.QName(nsmap["cbc"], "AdditionalStreetName")).text = address_details.get("Street 2", "")
     etree.SubElement(postal_address, etree.QName(nsmap["cbc"], "CityName")).text = address_details.get("Ship City", "")
@@ -290,7 +290,7 @@ def generate_xrechnung_lxml(invoice_number, order_info, amount, date,
 
     # Add buyer legal entity
     legal_entity = etree.SubElement(party, etree.QName(nsmap["cac"], "PartyLegalEntity"))
-    etree.SubElement(legal_entity, etree.QName(nsmap["cbc"], "RegistrationName")).text = "Name Anonymisiert"  # buyer
+    etree.SubElement(legal_entity, etree.QName(nsmap["cbc"], "RegistrationName")).text = buyer
 
     # Add payment means (42 = Payment into an account)
     # Etsy pays to my Bank Account, that's why 42 is correct
@@ -410,7 +410,7 @@ def process_sale(row, rows, writer, orders_dict, country_codes):
             logging.info("Wrote row to CSV: %s", output_row)
 
             # Generate XRechnung
-            generate_xrechnung_lxml(invoice_number, order_info, amount, date, address_details, country_codes)
+            generate_xrechnung_lxml(invoice_number, order_info, amount, date, buyer, address_details, country_codes)
 
     except Exception as e:
         logging.error("Error processing sale row: %s. Error: %s", row, e)
@@ -517,7 +517,7 @@ def process_refund(row, rows, writer, orders_dict, country_codes):
         logging.info("Wrote refund row to CSV: %s", output_row)
 
         # Generate XRechnung for cancellation invoice
-        generate_xrechnung_lxml(cancellation_invoice_number, order_info, -refund_amount, date,
+        generate_xrechnung_lxml(cancellation_invoice_number, order_info, -refund_amount, date, buyer,
                                 address_details, country_codes, is_cancellation=True,
                                 original_invoice_number=original_invoice_number)
         logging.info("Generated XRechnung for cancellation invoice: %s", cancellation_invoice_number)
