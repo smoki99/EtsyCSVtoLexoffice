@@ -44,7 +44,7 @@ def load_country_codes(csv_filepath="country_codes.csv"):
             for row in reader:
                 country_codes[row['country_name']] = row['alpha_2']
     except FileNotFoundError:
-        logging.error("Error: Country codes file not found at %s", csv_filepath)
+        print("Error: Country codes file not found at %s", csv_filepath)
         # Consider exiting the program or using default values
     return country_codes
 
