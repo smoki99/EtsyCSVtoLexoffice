@@ -5,6 +5,7 @@ from decimal import Decimal
 from lxml import etree
 import pandas as pd
 import csv
+import math
 
 # Configuration for EU countries and VAT rates
 EU_COUNTRIES = {
@@ -58,11 +59,12 @@ def get_country_code(country_name, country_codes):
 
 def generate_xrechnung_lxml(invoice_number, order_info, amount, date, buyer,
                             address_details, country_codes, is_cancellation=False,
-                            original_invoice_number=None):
+                            original_invoice_number=None, output_dir="Rechnungen"):
     """Generates an XRechnung XML file."""
 
     # Create Rechnungen folder if it doesn't exist
-    invoice_folder = "Rechnungen"
+    invoice_folder = output_dir
+    #print(output_dir)
     if not os.path.exists(invoice_folder):
         os.makedirs(invoice_folder)
 
@@ -192,10 +194,15 @@ def generate_xrechnung_lxml(invoice_number, order_info, amount, date, buyer,
     # Add buyer postal address
     postal_address = etree.SubElement(party, etree.QName(nsmap["cac"], "PostalAddress"))
     etree.SubElement(postal_address, etree.QName(nsmap["cbc"], "StreetName")).text = address_details.get("Street 1", "")
-    if address_details.get("Street 2", "") != "":
-        etree.SubElement(postal_address, etree.QName(nsmap["cbc"], "AdditionalStreetName")).text = address_details.get("Street 2", "")
+    
+    street2 = address_details.get("Street 2")
+    if not (isinstance(street2, float) and math.isnan(street2)):
+        etree.SubElement(postal_address, etree.QName(nsmap["cbc"], "AdditionalStreetName")).text = street2
     etree.SubElement(postal_address, etree.QName(nsmap["cbc"], "CityName")).text = address_details.get("Ship City", "")
-    etree.SubElement(postal_address, etree.QName(nsmap["cbc"], "PostalZone")).text = address_details.get("Ship Zipcode", "")
+
+    zipcode = address_details.get("Ship Zipcode")
+    if not (isinstance(zipcode, float) and math.isnan(zipcode)):
+        etree.SubElement(postal_address, etree.QName(nsmap["cbc"], "PostalZone")).text = address_details.get("Ship Zipcode", "")
     country = etree.SubElement(postal_address, etree.QName(nsmap["cac"], "Country"))
     etree.SubElement(country, etree.QName(nsmap["cbc"], "IdentificationCode")).text = get_country_code(
         address_details.get("Ship Country", ""), country_codes)
