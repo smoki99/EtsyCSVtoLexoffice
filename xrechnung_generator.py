@@ -5,6 +5,7 @@ from decimal import Decimal
 from lxml import etree
 import pandas as pd
 import csv
+import numpy
 import math
 from dotenv import load_dotenv
 
@@ -226,7 +227,7 @@ def generate_xrechnung_lxml(invoice_number, order_info, amount, date, buyer,
 
     # Add Buyer Email (PEPPOL-EN16931-R020) - Since we not have we write no-mail@etsy.com
     # NO Buyer Email
-    etree.SubElement(party, etree.QName(nsmap["cbc"], "EndpointID"), attrib={"schemeID": "EM"}).text = "no-email@etsy.com"
+    etree.SubElement(party, etree.QName(nsmap["cbc"], "EndpointID"), attrib={"schemeID": "EM"}).text = "no-email@domain"
 
     # Add buyer postal address
     postal_address = etree.SubElement(party, etree.QName(nsmap["cac"], "PostalAddress"))
@@ -250,7 +251,7 @@ def generate_xrechnung_lxml(invoice_number, order_info, amount, date, buyer,
           #etree.SubElement(party_tax_scheme2, etree.QName(nsmap["cbc"], "CompanyID")).text = buyer_vat_id
           #etree.SubElement(party_tax_scheme2, etree.QName(nsmap["cbc"], "ID")).text = "VAT"
     # Add buyer tax scheme
-    if (buyer_vat_id!=""):
+    if buyer_vat_id and not (isinstance(buyer_vat_id, float) and math.isnan(buyer_vat_id)):
         party_tax_scheme = etree.SubElement(party, etree.QName(nsmap["cac"], "PartyTaxScheme"))
         etree.SubElement(party_tax_scheme, etree.QName(nsmap["cbc"], "CompanyID")).text = buyer_vat_id
         tax_scheme = etree.SubElement(party_tax_scheme, etree.QName(nsmap["cac"], "TaxScheme"))

@@ -29,6 +29,7 @@ def process_csv_to_xrechnung(csv_filepath, output_dir):
             date_str = row['Date']
             date = datetime.strptime(date_str, "%Y-%m-%d")  # Adjust date format if needed
             buyer = row['Buyer']
+            buyer_vat_id = row['VATID']
 
             # Create address details dictionary
             address_details = {
@@ -49,7 +50,7 @@ def process_csv_to_xrechnung(csv_filepath, output_dir):
             generate_xrechnung_lxml(
                 invoice_number, order_info, amount, date, buyer,
                 address_details, country_codes, is_cancellation,
-                original_invoice_number, output_dir, True, "LU12345"
+                original_invoice_number, output_dir, True, buyer_vat_id
             )
 
             print(f"Generated XRechnung for invoice: {invoice_number}")
