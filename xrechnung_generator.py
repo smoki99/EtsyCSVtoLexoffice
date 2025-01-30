@@ -6,6 +6,7 @@ from lxml import etree
 import pandas as pd
 import csv
 import math
+from dotenv import load_dotenv
 
 # Configuration for EU countries and VAT rates
 EU_COUNTRIES = {
@@ -15,6 +16,9 @@ EU_COUNTRIES = {
      "LU": "Luxembourg", "LV": "Latvia", "MT": "Malta", "NL": "Netherlands", "PL": "Poland",
      "PT": "Portugal", "RO": "Romania", "SE": "Sweden", "SI": "Slovenia", "SK": "Slovakia"
 }
+
+load_dotenv()
+
 # Sender address from .env file
 SENDER_COMPANY_NAME = os.getenv("SENDER_COMPANY_NAME")
 SENDER_NAME = os.getenv("SENDER_NAME")
@@ -59,7 +63,7 @@ def get_country_code(country_name, country_codes):
 
 def generate_xrechnung_lxml(invoice_number, order_info, amount, date, buyer,
                             address_details, country_codes, is_cancellation=False,
-                            original_invoice_number=None, output_dir="Rechnungen"):
+                            original_invoice_number=None, output_dir="Rechnungen", reverse_charge=False, buyer_vat_id=""):
     """Generates an XRechnung XML file."""
 
     # Create Rechnungen folder if it doesn't exist
@@ -70,14 +74,41 @@ def generate_xrechnung_lxml(invoice_number, order_info, amount, date, buyer,
 
     # Determine VAT rate and note based on country code from mapping
     country_code = get_country_code(address_details.get("Ship Country", ""), country_codes)
-    if country_code not in EU_COUNTRIES:
-        vat_rate = Decimal("0.00")
-        vat_category = "G"  # Export outside the EU
-        vat_note = "Steuerfreie Ausfuhrlieferung"
+    if (reverse_charge == False):
+        if country_code == "DE":
+            vat_rate = Decimal("0.19")
+            vat_category = "S"  # Standard rate
+            vat_note = "Lieferung innerhalb Deutschlands mit deutscher Mehrwertsteuer."
+        if country_code == "UK":
+            vat_rate = Decimal("0.00")
+            vat_category = "O"  # Marketplace Sale or below 135 GBP
+            vat_note = "§ 3c UStG i.V.m. Section 14 VAT Act 1994 (VAT durch Marketplace abgeführt)"
+        elif country_code in EU_COUNTRIES:
+            vat_rate = Decimal("0.19")
+            vat_category = "S"
+            vat_note = "Lieferung gemäß § 3a UStG (Umsatz unter 10.000 € grenzüberschreitend)"
+        else:
+            vat_rate = Decimal("0.00")
+            vat_category = "G"  # Export outside the EU
+            vat_note = "Steuerfreie Ausfuhrlieferung nach § 4 Nr. 1a UStG."
     else:
-        vat_rate = Decimal("0.19")
-        vat_category = "S"  # Standard rate
-        vat_note = "Innergemeinschaftliche Lieferung, Rechnungsstellung mit deutscher Umsatzsteuer aufgrund Kleinunternehmerregelung bis 10.000€ Umsatz."
+        if country_code == "DE":  # In Deutschland gibt es normalerweise kein Reverse Charge!
+            vat_rate = Decimal("0.19")
+            vat_category = "S"  # Standard rate
+            vat_note = "Lieferung innerhalb Deutschlands mit deutscher Mehrwertsteuer. Regelbesteuerung"
+        elif country_code == "UK":
+            vat_rate = Decimal("0.00")
+            vat_category = "K"  # Reverse Charge für UK (Post-Brexit)
+            vat_note = "§ 13b Abs. 2 UStG (Reverse Charge im Bestimmungsland)"
+        elif country_code in EU_COUNTRIES:
+            vat_rate = Decimal("0.00")
+            vat_category = "K"  # Reverse Charge innerhalb der EU
+            vat_note = "Reverse Charge - Steuerschuldnerschaft des Leistungsempfängers gemäß Art. 196 MwStSystRL i.V.m. §13b UStG"
+        else:
+            vat_rate = Decimal("0.00")
+            vat_category = "Z"  # Export außerhalb der EU
+            vat_note = "§ 13b Abs. 2 UStG (Reverse Charge im Bestimmungsland)"
+
 
     # Calculate VAT amount and total amount
     #vat_amount = (Decimal(str(amount)) * vat_rate).quantize(Decimal("0.01"))
@@ -137,7 +168,13 @@ def generate_xrechnung_lxml(invoice_number, order_info, amount, date, buyer,
     etree.SubElement(root, etree.QName(nsmap["cbc"], "DocumentCurrencyCode")).text = "EUR"
 
     # B2C keine Leitweg ID
-    #etree.SubElement(root, etree.QName(nsmap["cbc"], "BuyerReference")).text = "n/a"
+    # WZ 47.71
+    if (reverse_charge==False):
+        etree.SubElement(root, etree.QName(nsmap["cbc"], "BuyerReference")).text = "WZ 47.71" 
+        # WZ 47.71 ist der richtige Branchen-Code für den Einzelhandel mit Bekleidung, wenn du T-Shirts an Endkunden (B2C) verkaufst.
+    else:
+        etree.SubElement(root, etree.QName(nsmap["cbc"], "BuyerReference")).text = "WZ 47.10" 
+        # WZ 74.10 – "Design von Mode"
 
     # Add Billing Reference
     if is_cancellation and original_invoice_number:
@@ -195,9 +232,9 @@ def generate_xrechnung_lxml(invoice_number, order_info, amount, date, buyer,
     postal_address = etree.SubElement(party, etree.QName(nsmap["cac"], "PostalAddress"))
     etree.SubElement(postal_address, etree.QName(nsmap["cbc"], "StreetName")).text = address_details.get("Street 1", "")
     
-    street2 = address_details.get("Street 2")
-    if not (isinstance(street2, float) and math.isnan(street2)):
-        etree.SubElement(postal_address, etree.QName(nsmap["cbc"], "AdditionalStreetName")).text = street2
+    #street2 = address_details.get("Street 2")
+    #if not (isinstance(street2, float) and math.isnan(street2)):
+    #    etree.SubElement(postal_address, etree.QName(nsmap["cbc"], "AdditionalStreetName")).text = street2
     etree.SubElement(postal_address, etree.QName(nsmap["cbc"], "CityName")).text = address_details.get("Ship City", "")
 
     zipcode = address_details.get("Ship Zipcode")
@@ -206,6 +243,19 @@ def generate_xrechnung_lxml(invoice_number, order_info, amount, date, buyer,
     country = etree.SubElement(postal_address, etree.QName(nsmap["cac"], "Country"))
     etree.SubElement(country, etree.QName(nsmap["cbc"], "IdentificationCode")).text = get_country_code(
         address_details.get("Ship Country", ""), country_codes)
+
+    # Add VAT ID Buyer if defined
+    #if (buyer_vat_id!=""):
+          #party_tax_scheme2 = etree.SubElement(postal_address, etree.QName(nsmap["cac"], "PartyTaxScheme"))
+          #etree.SubElement(party_tax_scheme2, etree.QName(nsmap["cbc"], "CompanyID")).text = buyer_vat_id
+          #etree.SubElement(party_tax_scheme2, etree.QName(nsmap["cbc"], "ID")).text = "VAT"
+    # Add buyer tax scheme
+    if (buyer_vat_id!=""):
+        party_tax_scheme = etree.SubElement(party, etree.QName(nsmap["cac"], "PartyTaxScheme"))
+        etree.SubElement(party_tax_scheme, etree.QName(nsmap["cbc"], "CompanyID")).text = buyer_vat_id
+        tax_scheme = etree.SubElement(party_tax_scheme, etree.QName(nsmap["cac"], "TaxScheme"))
+        etree.SubElement(tax_scheme, etree.QName(nsmap["cbc"], "ID")).text = "VAT"
+
 
     # Add buyer legal entity
     legal_entity = etree.SubElement(party, etree.QName(nsmap["cac"], "PartyLegalEntity"))
@@ -229,8 +279,10 @@ def generate_xrechnung_lxml(invoice_number, order_info, amount, date, buyer,
     etree.SubElement(tax_category, etree.QName(nsmap["cbc"], "ID")).text = vat_category
     etree.SubElement(tax_category, etree.QName(nsmap["cbc"], "Percent")).text = f"{vat_rate * 100:.2f}"
     # Add exemption reason if the rate is 0
-    if vat_rate == 0:
+    if vat_rate == 0 and vat_category!="Z":
         etree.SubElement(tax_category, etree.QName(nsmap["cbc"], "TaxExemptionReason")).text = vat_note
+    #else:
+        #etree.SubElement(tax_category, etree.QName(nsmap["cbc"], "TaxTypeCode")).text = "VAT"
     tax_scheme = etree.SubElement(tax_category, etree.QName(nsmap["cac"], "TaxScheme"))
     etree.SubElement(tax_scheme, etree.QName(nsmap["cbc"], "ID")).text = "VAT"
 
@@ -253,7 +305,7 @@ def generate_xrechnung_lxml(invoice_number, order_info, amount, date, buyer,
     etree.SubElement(invoice_line, etree.QName(nsmap["cbc"], "LineExtensionAmount"),
                      attrib={"currencyID": "EUR"}).text = f"{amount:.2f}"
     item = etree.SubElement(invoice_line, etree.QName(nsmap["cac"], "Item"))
-    etree.SubElement(item, etree.QName(nsmap["cbc"], "Description")).text = f"Etsy Bestellung #{order_info}"
+    etree.SubElement(item, etree.QName(nsmap["cbc"], "Description")).text = order_info
     etree.SubElement(item, etree.QName(nsmap["cbc"], "Name")).text = "Bestellung"
     classified_tax_category = etree.SubElement(item, etree.QName(nsmap["cac"], "ClassifiedTaxCategory"))
     etree.SubElement(classified_tax_category, etree.QName(nsmap["cbc"], "ID")).text = vat_category

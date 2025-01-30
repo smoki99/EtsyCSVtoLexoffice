@@ -178,7 +178,7 @@ def process_sale(row, rows, writer, orders_dict, country_codes):
             logging.info("Wrote row to CSV: %s", output_row)
 
             # Generate XRechnung
-            invoice_filename = generate_xrechnung_lxml(invoice_number, order_info, amount, date, buyer, address_details, country_codes)
+            invoice_filename = generate_xrechnung_lxml(invoice_number, f"Etsy Bestellung #{order_info}", amount, date, buyer, address_details, country_codes)
             logging.info("Generated XRechnung: %s", invoice_filename)
             
 
@@ -287,7 +287,7 @@ def process_refund(row, rows, writer, orders_dict, country_codes):
         logging.info("Wrote refund row to CSV: %s", output_row)
 
         # Generate XRechnung for cancellation invoice
-        invoice_filename = generate_xrechnung_lxml(cancellation_invoice_number, order_info, -refund_amount, date, buyer,
+        invoice_filename = generate_xrechnung_lxml(cancellation_invoice_number, f"Etsy Bestellung #{order_info}", -refund_amount, date, buyer,
                                 address_details, country_codes, is_cancellation=True,
                                 original_invoice_number=original_invoice_number)
         logging.info("Generated XRechnung: %s", invoice_filename)

@@ -35,7 +35,7 @@ def process_csv_to_xrechnung(csv_filepath, output_dir):
                 "Street 1": row['Street 1'],
                 "Street 2": row['Street 2'],
                 "Ship City": row['City'],
-                "Ship Zipcode": row['Zipcode'],
+                "Ship Zipcode": str(row['Zipcode']),
                 "Ship Country": row['Country']
             }
 
@@ -49,7 +49,7 @@ def process_csv_to_xrechnung(csv_filepath, output_dir):
             generate_xrechnung_lxml(
                 invoice_number, order_info, amount, date, buyer,
                 address_details, country_codes, is_cancellation,
-                original_invoice_number, output_dir
+                original_invoice_number, output_dir, True, "LU12345"
             )
 
             print(f"Generated XRechnung for invoice: {invoice_number}")
