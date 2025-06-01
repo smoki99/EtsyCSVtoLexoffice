@@ -7,3 +7,6 @@ examples
 *.pyc
 .env
 Rechnungen
+xrechnungen/*.xml
+out.txt
+**/*.7z

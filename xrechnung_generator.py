@@ -169,13 +169,7 @@ def generate_xrechnung_lxml(invoice_number, order_info, amount, date, buyer,
     etree.SubElement(root, etree.QName(nsmap["cbc"], "DocumentCurrencyCode")).text = "EUR"
 
     # B2C keine Leitweg ID
-    # WZ 47.71
-    if (reverse_charge==False):
-        etree.SubElement(root, etree.QName(nsmap["cbc"], "BuyerReference")).text = "WZ 47.71" 
-        # WZ 47.71 ist der richtige Branchen-Code für den Einzelhandel mit Bekleidung, wenn du T-Shirts an Endkunden (B2C) verkaufst.
-    else:
-        etree.SubElement(root, etree.QName(nsmap["cbc"], "BuyerReference")).text = "WZ 47.10" 
-        # WZ 74.10 – "Design von Mode"
+    etree.SubElement(root, etree.QName(nsmap["cbc"], "BuyerReference")).text = "Keine Referenz"
 
     # Add Billing Reference
     if is_cancellation and original_invoice_number:
