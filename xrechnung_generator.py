@@ -99,11 +99,11 @@ def generate_xrechnung_lxml(invoice_number, order_info, amount, date, buyer,
             vat_note = "Lieferung innerhalb Deutschlands mit deutscher Mehrwertsteuer. Regelbesteuerung"
         elif country_code == "UK":
             vat_rate = Decimal("0.00")
-            vat_category = "AE"  # Reverse Charge für UK (Post-Brexit)
+            vat_category = "K"  # Reverse Charge für UK (Post-Brexit)
             vat_note = "§ 13b Abs. 2 UStG (Reverse Charge im Bestimmungsland)"
         elif country_code in EU_COUNTRIES:
             vat_rate = Decimal("0.00")
-            vat_category = "AE"  # Reverse Charge innerhalb der EU
+            vat_category = "K"  # Reverse Charge innerhalb der EU
             vat_note = "Reverse Charge - Steuerschuldnerschaft des Leistungsempfängers gemäß Art. 196 MwStSystRL i.V.m. §13b UStG"
         else:
             vat_rate = Decimal("0.00")
