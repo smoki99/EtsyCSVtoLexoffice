@@ -116,13 +116,13 @@ def generate_xrechnung_lxml(invoice_number, order_info, amount, date, buyer,
     vat_amount = (Decimal(amount) * vat_rate) / (1 + vat_rate)
     vat_amount = vat_amount.quantize(Decimal("0.01"))
 
-    total_amount = Decimal(str(amount)) - vat_amount
+    netto_amount = Decimal(str(amount)) - vat_amount
 
     # Negate amounts for cancellation invoices
     if is_cancellation:
         amount = -amount
         vat_amount = -vat_amount
-        total_amount = -total_amount
+        netto_amount = -netto_amount
 
     # Define namespaces
     nsmap = {
@@ -219,6 +219,22 @@ def generate_xrechnung_lxml(invoice_number, order_info, amount, date, buyer,
     customer_party = etree.SubElement(root, etree.QName(nsmap["cac"], "AccountingCustomerParty"))
     party = etree.SubElement(customer_party, etree.QName(nsmap["cac"], "Party"))
 
+    # Lieferdatum hinzufügen
+    delivery = etree.SubElement(root, etree.QName(nsmap["cac"], "Delivery"))
+    etree.SubElement(delivery, etree.QName(nsmap["cbc"], "ActualDeliveryDate")).text = date.strftime("%Y-%m-%d")
+
+    # Lieferanschrift hinzufügen (DeliveryLocation + Address)
+    delivery_location = etree.SubElement(delivery, etree.QName(nsmap["cac"], "DeliveryLocation"))
+    address = etree.SubElement(delivery_location, etree.QName(nsmap["cac"], "Address"))
+    etree.SubElement(address, etree.QName(nsmap["cbc"], "StreetName")).text = address_details.get("Street 1", "")
+    etree.SubElement(address, etree.QName(nsmap["cbc"], "CityName")).text = address_details.get("Ship City", "")
+    zipcode = address_details.get("Ship Zipcode")
+    if not (isinstance(zipcode, float) and math.isnan(zipcode)):
+        etree.SubElement(address, etree.QName(nsmap["cbc"], "PostalZone")).text = address_details.get("Ship Zipcode", "")
+    country = etree.SubElement(address, etree.QName(nsmap["cac"], "Country"))
+    etree.SubElement(country, etree.QName(nsmap["cbc"], "IdentificationCode")).text = get_country_code(
+        address_details.get("Ship Country", ""), country_codes)
+
     # Add Buyer Email (PEPPOL-EN16931-R020) - Since we not have we write no-mail@etsy.com
     # NO Buyer Email
     etree.SubElement(party, etree.QName(nsmap["cbc"], "EndpointID"), attrib={"schemeID": "EM"}).text = "no-email@domain"
@@ -267,7 +283,7 @@ def generate_xrechnung_lxml(invoice_number, order_info, amount, date, buyer,
 
     tax_subtotal = etree.SubElement(tax_total, etree.QName(nsmap["cac"], "TaxSubtotal"))
     etree.SubElement(tax_subtotal, etree.QName(nsmap["cbc"], "TaxableAmount"),
-                     attrib={"currencyID": "EUR"}).text = f"{amount:.2f}"
+                     attrib={"currencyID": "EUR"}).text = f"{netto_amount:.2f}"
     etree.SubElement(tax_subtotal, etree.QName(nsmap["cbc"], "TaxAmount"),
                      attrib={"currencyID": "EUR"}).text = f"{vat_amount:.2f}"
     tax_category = etree.SubElement(tax_subtotal, etree.QName(nsmap["cac"], "TaxCategory"))
@@ -284,13 +300,13 @@ def generate_xrechnung_lxml(invoice_number, order_info, amount, date, buyer,
     # Add legal monetary total
     legal_monetary_total = etree.SubElement(root, etree.QName(nsmap["cac"], "LegalMonetaryTotal"))
     etree.SubElement(legal_monetary_total, etree.QName(nsmap["cbc"], "LineExtensionAmount"),
-                     attrib={"currencyID": "EUR"}).text = f"{amount:.2f}"
+                     attrib={"currencyID": "EUR"}).text = f"{netto_amount:.2f}"
     etree.SubElement(legal_monetary_total, etree.QName(nsmap["cbc"], "TaxExclusiveAmount"),
-                     attrib={"currencyID": "EUR"}).text = f"{amount:.2f}"
+                     attrib={"currencyID": "EUR"}).text = f"{netto_amount:.2f}"
     etree.SubElement(legal_monetary_total, etree.QName(nsmap["cbc"], "TaxInclusiveAmount"),
-                     attrib={"currencyID": "EUR"}).text = f"{total_amount:.2f}"
+                     attrib={"currencyID": "EUR"}).text = f"{amount:.2f}"
     etree.SubElement(legal_monetary_total, etree.QName(nsmap["cbc"], "PayableAmount"),
-                     attrib={"currencyID": "EUR"}).text = f"{total_amount:.2f}"
+                     attrib={"currencyID": "EUR"}).text = f"{amount:.2f}"
 
     # Add invoice line
     invoice_line = etree.SubElement(root, etree.QName(nsmap["cac"], "InvoiceLine"))
@@ -298,7 +314,7 @@ def generate_xrechnung_lxml(invoice_number, order_info, amount, date, buyer,
     etree.SubElement(invoice_line, etree.QName(nsmap["cbc"], "InvoicedQuantity"),
                      attrib={"unitCode": "C62"}).text = "1" if not is_cancellation else "-1"
     etree.SubElement(invoice_line, etree.QName(nsmap["cbc"], "LineExtensionAmount"),
-                     attrib={"currencyID": "EUR"}).text = f"{amount:.2f}"
+                     attrib={"currencyID": "EUR"}).text = f"{netto_amount:.2f}"
     item = etree.SubElement(invoice_line, etree.QName(nsmap["cac"], "Item"))
     etree.SubElement(item, etree.QName(nsmap["cbc"], "Description")).text = order_info
     etree.SubElement(item, etree.QName(nsmap["cbc"], "Name")).text = "Bestellung"
