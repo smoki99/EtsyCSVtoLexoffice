@@ -75,14 +75,13 @@ def process_deposit(row, writer):
     try:
         logging.info("Processing deposit: %s", row)
         date = datetime.strptime(row[0].strip('"'), "%B %d, %Y").date()
-        amount = float(row[2].split('€')[1].strip().split(' ')[0].replace(',', '.'))
-
+        amount = float(row[2].split('€')[1].strip().split(' ')[0].replace(',', ''))
         output_row = [
             date.strftime("%d.%m.%Y"),
             "Auszahlung",
             "Etsy Ireland UC",
             "Geldtransit/Umbuchung/Auszahlung",
-            f"{-amount:,.2f}".replace('.', ',')
+            f"{-amount:.2f}".replace('.', ',')
         ]
         writer.writerow(output_row)
         logging.info("Wrote row to CSV: %s", output_row)
