@@ -106,6 +106,9 @@ def load_orders_file(orders_directory="."):
                 count = 0
                 for row in reader:
                     order_id = row.get("Order ID", "").strip()
+                    ship_country = row.get("Ship Country", "").strip()
+                    if ship_country.lower() == "the netherlands":
+                        ship_country = "Netherlands"
                     if order_id:
                         orders_dict[order_id] = {
                             "Full Name": row.get("Full Name", "").strip(),
@@ -114,7 +117,7 @@ def load_orders_file(orders_directory="."):
                             "Ship City": row.get("Ship City", "").strip(),
                             "Ship State": row.get("Ship State", "").strip(),
                             "Ship Zipcode": row.get("Ship Zipcode", "").strip(),
-                            "Ship Country": row.get("Ship Country", "").strip()
+                            "Ship Country": ship_country
                         }
                         count += 1
                 logging.info("Loaded %d orders from: %s", count, filename)
