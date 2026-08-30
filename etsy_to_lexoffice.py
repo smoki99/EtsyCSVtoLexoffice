@@ -93,24 +93,35 @@ def process_deposit(row, writer):
 def load_orders_file(orders_directory="."):
     """Load the orders CSV file and return a dictionary with Order ID as keys."""
     orders_dict = {}
-    for filename in glob.glob(os.path.join(orders_directory, "EtsySoldOrders*.csv")):
+    search_path = os.path.join(orders_directory, "EtsySoldOrders*.csv")
+    matched_files = glob.glob(search_path)
+    
+    logging.info(f"Searching for order files using pattern: {search_path}")
+    logging.info(f"Found order files: {matched_files}")
+
+    for filename in matched_files:
         try:
-            with open(filename, 'r', encoding='utf-8') as file:
+            with open(filename, 'r', encoding='utf-8-sig') as file: # Added -sig to handle potential BOM
                 reader = csv.DictReader(file)
+                count = 0
                 for row in reader:
-                    orders_dict[row["Order ID"]] = {
-                        "Full Name": row["Full Name"],
-                        "Street 1": row["Street 1"],
-                        "Street 2": row["Street 2"],
-                        "Ship City": row["Ship City"],
-                        "Ship State": row["Ship State"],
-                        "Ship Zipcode": row["Ship Zipcode"],
-                        "Ship Country": row["Ship Country"]
-                    }
-            logging.info("Loaded orders from: %s", filename)
-            logging.info(f"Input file hash: {calculate_file_hash(filename)}")
+                    order_id = row.get("Order ID", "").strip()
+                    if order_id:
+                        orders_dict[order_id] = {
+                            "Full Name": row.get("Full Name", "").strip(),
+                            "Street 1": row.get("Street 1", "").strip(),
+                            "Street 2": row.get("Street 2", "").strip(),
+                            "Ship City": row.get("Ship City", "").strip(),
+                            "Ship State": row.get("Ship State", "").strip(),
+                            "Ship Zipcode": row.get("Ship Zipcode", "").strip(),
+                            "Ship Country": row.get("Ship Country", "").strip()
+                        }
+                        count += 1
+                logging.info("Loaded %d orders from: %s", count, filename)
         except Exception as e:
             logging.error("Error loading orders from %s: %s", filename, e)
+            
+    logging.info(f"Total orders loaded across all files: {len(orders_dict)}")
     return orders_dict
 
 def generate_invoice_number(date, is_cancellation=False):
@@ -131,7 +142,8 @@ def process_sale(row, rows, writer, orders_dict, country_codes):
         date = datetime.strptime(row[0].strip('"'), "%B %d, %Y").date()
 
         if "for Order" in row[2]:
-            order_info = row[2].split("#")[1].strip()
+            raw_order_part = row[2].split("#")[1].strip()
+            order_info = raw_order_part.split()[0]
             buyer = orders_dict.get(order_info, {}).get("Full Name", "Etsy Refund")
             amount = float(row[7].replace('€', '').replace(',', '.').strip())
             if buyer == "Etsy Refund":
